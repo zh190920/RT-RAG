@@ -13,11 +13,11 @@ RIGHT_SUBTREE_TREES_PER_VARIANT = 3
 MAX_VARIANTS = 2
 
 # Path to save run-time statistics and logs
-STATS_FILE_PATH = "/path/to/save/statistics_log.txt"
+STATS_FILE_PATH = "save/statistics_log.txt"
 
 # OpenAI-compatible language model API settings
-BASE_URL = "https://your-openai-compatible-api-url/v1"
-API_KEY = "your-api-key-string"
+BASE_URL = "https://open.bigmodel.cn/api/paas/v4"
+API_KEY = "00eacdd74fc047539eb47c5f2f96b916.0jZiNGZy3N9gHT0T"
 
 # Path to save generated dense embeddings
 EMBEDDING_DATA = "/path/to/embedding_data_output"

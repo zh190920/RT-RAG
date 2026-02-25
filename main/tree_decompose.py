@@ -11,6 +11,8 @@ from collections import Counter, defaultdict
 from openai import OpenAI
 from retrieve import answer_question, direct_answer
 
+API_KEY = "00eacdd74fc047539eb47c5f2f96b916.0jZiNGZy3N9gHT0T"
+BASE_URL= "https://open.bigmodel.cn/api/paas/v4"
 from config import  DATASET, METHOD, CHUNK_SIZE, MIN_SENTENCE, OVERLAP, TOPK1, TOPK2, MAX_ITERATIONS, BASE_URL, API_KEY, TREES_PER_QUESTION, MAX_TOKENS,                        DECOMPOSE_TEMPERATURE, TOP_P,FREQUENCY_PENALTY, PRESENCE_PENALTY, NUM_EXAMPLES, MAX_HEIGHT, RIGHT_SUBTREE_VARIANTS, RIGHT_SUBTREE_TREES_PER_VARIANT, MAX_VARIANTS, STATS_FILE_PATH,ENHANCED_RIGHT_SUBTREE
 client = OpenAI(base_url=BASE_URL, api_key=API_KEY)
 import os
@@ -54,7 +56,7 @@ def generate_response(messages, max_tokens=800, temperature=0.2, top_p=1.0, freq
     """Generic API call function to replace original requests.post call"""
     try:#"Qwen/Qwen2.5-14B-Instruct"
         completion = client.chat.completions.create(
-            model="gpt-4o-mini",  # Can be changed as needed
+            model="glm-4-flash",  # Can be changed as needed
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,
@@ -380,222 +382,102 @@ def analyze_question_structure(question, api_url=None):
     Analyze question and return its structure with limiting conditions
     """
     examples_string = (
-    "Question: \"Which female astronaut who graduated from Stanford University was the first to perform a spacewalk in the 1990s?\"\n"
+    "Question: \"哪位毕业于斯坦福大学的女宇航员是20世纪90年代首位进行太空行走的人？\"\n"
     "CoT: Let's think step by step\n"
-    "\"1. The question asks for the identity of a specific astronaut with multiple defining characteristics.\"\n"
-    "\"2. The astronaut is described as female, a Stanford University graduate, and the first to perform a spacewalk in the 1990s.\"\n"
-    "\"3. For known entities, I need to identify explicit subjects mentioned in the question.\"\n"
-    "\"4. Stanford University is explicitly named, and spacewalks in the 1990s are a specific time-limited event.\"\n"
-    "\"5. The specific astronaut's identity is not directly provided - I need to determine who matches these criteria.\"\n"
-    "\"6. Since I need to discover which specific person matches these characteristics, the astronaut identity is an unknown entity.\"\n"
-    "So the structure is: [Core Query: Which astronaut Known Entities: {Subject: Stanford University, Limitation: educational institution}, {Subject: Spacewalk, Limitation: occurred in 1990s} Unknown Entities: {Subject: Astronaut identity, Limitation: female, Stanford graduate, first to perform spacewalk in 1990s}]\n\n"
+    "\"1. 这个问题询问的是具有多个显著特征的特定宇航员的身份。\"\n"
+    "\"2. 这位宇航员被描述为女性，是斯坦福大学的毕业生，也是20世纪90年代首位进行太空行走的人。\"\n"
+    "\"3. 对于已知实体，我需要识别问题中提到的明确主语。\"\n"
+    "\"4. 斯坦福大学被明确提及，而20世纪90年代的太空行走是一个有特定时间限制的事件。\"\n"
+    "\"5. 这位特定宇航员的身份并未直接给出——我需要确定谁符合这些标准。\"\n"
+    "\"6. 由于我需要找出哪个具体的人符合这些特征，所以这位宇航员的身份还是个未知的谜团。\"\n"
+    "So the structure is: [Core Query: Which astronaut Known Entities:  {Subject: 斯坦福大学, Limitation: 教育机构}, {Subject: 太空行走, Limitation: 发生在20世纪90年代} Unknown Entities: {Subject: 宇航员身份, Limitation: 女性, 斯坦福大学毕业生, 20世纪90年代首次进行太空行走}]\n\n"
     
-    "Question: \"What disease affecting both livestock and humans was successfully eradicated worldwide by 1980 through a coordinated vaccination campaign?\"\n"
+    "Question: \"哪种既影响牲畜又影响人类的疾病，通过协调一致的疫苗接种运动，在1980年之前在全球范围内成功根除了？\"\n"
     "CoT: Let's think step by step\n"
-    "\"1. The question asks for a disease with specific characteristics and history.\"\n"
-    "\"2. The disease must affect both livestock and humans, and was eradicated by 1980 through vaccination.\"\n"
-    "\"3. For known entities, I need to identify explicit subjects mentioned in the question.\"\n"
-    "\"4. Livestock and humans are explicitly mentioned as affected groups.\"\n"
-    "\"5. The vaccination campaign and 1980 timeframe are explicitly mentioned parameters.\"\n"
-    "\"6. The specific disease identity is what I need to discover, making it an unknown entity.\"\n"
-    "So the structure is: [Core Query: What disease Known Entities: {Subject: Livestock, Limitation: affected by the disease}, {Subject: Humans, Limitation: affected by the disease}, {Subject: Vaccination campaign, Limitation: coordinated, completed by 1980, worldwide} Unknown Entities: {Subject: Disease identity, Limitation: affected both livestock and humans, eradicated by 1980}]\n\n"
+    "\"1. 这个问题询问一种具有特定特征和历史的疾病。\"\n"
+    "\"2. 这种疾病必须同时影响牲畜和人类，并且在1980年之前通过疫苗接种运动在全球范围内被根除。\"\n"
+    "\"3. 对于已知实体，我需要识别问题中明确提到的主语。\"\n"
+    "\"4. 牲畜和人类被明确提及为受影响的群体。\"\n"
+    "\"5. 疫苗接种运动和1980年的时间范围是明确提到的参数。\"\n"
+    "\"6. 我需要查明的是具体的疾病种类，这使其成为一个未知的实体。\"\n"
+    "So the structure is: [Core Query: What disease Known Entities: {Subject: 牲畜, Limitation: 受这种疾病影响}, {Subject: 人类, Limitation: 受这种疾病影响}, {Subject: 疫苗接种活动, Limitation: 协调一致，于1980年完成，覆盖全球范围} Unknown Entities: {Subject: 疾病识别, Limitation: 既影响了牲畜也影响了人类，于1980年被根除}]\n\n"
     
-    "Question: \"What architectural style is shared by the buildings designed by the same architect who constructed the famous cathedral located in Barcelona?\"\n"
+    "Question: \"那位建造了巴塞罗那著名大教堂的建筑师所设计的建筑，都共同采用了哪种建筑风格？\"\n"
     "CoT: Let's think step by step\n"
-    "\"1. The question seeks an architectural style shared across buildings.\"\n"
-    "\"2. These buildings were designed by the architect who constructed a famous cathedral in Barcelona.\"\n"
-    "\"3. For known entities, only Barcelona and the cathedral are explicitly mentioned.\"\n"
-    "\"4. I need to discover multiple unknown pieces of information in sequence.\"\n"
-    "\"5. First, I need to identify who the architect of the Barcelona cathedral was.\"\n"
-    "\"6. Then, I need to identify other buildings designed by this architect.\"\n"
-    "\"7. Finally, I need to determine what architectural style these buildings share.\"\n"
-    "\"8. Each of these represents a distinct unknown entity in my analysis.\"\n"
-    "So the structure is: [Core Query: What architectural style is shared Known Entities: {Subject: Cathedral, Limitation: famous, located in Barcelona}, {Subject: Barcelona, Limitation: city containing the cathedral} Unknown Entities: {Subject: Architect identity, Limitation: constructed Barcelona cathedral}, {Subject: Other buildings, Limitation: designed by same architect}, {Subject: Architectural style, Limitation: common to these buildings}]\n\n"
+    "\"1. 这个问题寻求的是建筑物所共有的一种建筑风格。\"\n"
+    "\"2. 这些建筑是由那位在巴塞罗那建造了一座著名大教堂的建筑师设计的。\"\n"
+    "\"3. 对于已知实体，只有巴塞罗那和大教堂被明确提及。\"\n"
+    "\"4. 我需要按顺序发现多个未知实体。\"\n"
+    "\"5. 首先，我需要确定巴塞罗那大教堂的建筑师是谁。\"\n"
+    "\"6. 然后，我需要识别这位建筑师设计的其他建筑。\"\n"
+    "\"7. 最后，我需要确定这些建筑物共享的建筑风格。\"\n"
+    "\"8. 这些中的每一个都代表了我分析中一个不同的未知实体。\"\n"
+    "So the structure is: [Core Query: What architectural style is shared Known Entities: {Subject: 大教堂, Limitation: 著名，位于巴塞罗那}, {Subject: 巴塞罗那, Limitation: 包含大教堂的城市} Unknown Entities: {Subject: 建筑师身份, Limitation: 建造了巴塞罗那大教堂}, {Subject: 其他建筑物, Limitation: 由同一位建筑师设计}, {Subject: 建筑风格, Limitation: 这些建筑物所共有的}]\n\n"
     
-    "Question: \"What is the capital of the country where the inventor of dynamite was born?\"\n"
+    "Question: \"炸药发明者出生的国家的首都是什么？\"\n"
     "CoT: Let's think step by step\n"
-    "\"1. This question asks for a capital city through multiple steps of reasoning.\"\n"
-    "\"2. The only explicitly named entity is dynamite, which is a known entity.\"\n"
-    "\"3. I need to discover three distinct pieces of information to answer this question.\"\n"
-    "\"4. First, I need to identify who invented dynamite - this person is not explicitly named.\"\n"
-    "\"5. Then, I need to determine which country this person was born in.\"\n"
-    "\"6. Finally, I need to identify the capital of that country.\"\n"
-    "\"7. Each of these represents a separate unknown entity that requires factual knowledge.\"\n"
-    "So the structure is: [Core Query: What is the capital Known Entities: {Subject: Dynamite, Limitation: explosive invention} Unknown Entities: {Subject: Inventor identity, Limitation: person who created dynamite}, {Subject: Country of birth, Limitation: birthplace of identified inventor}, {Subject: Capital city, Limitation: capital of identified country}]\n\n"
-    
-    
-    "Question: \"Who was the teacher of the philosopher who taught Alexander the Great?\"\n"
-    "CoT: Let's think step by step\n"
-    "\"1. This question asks for a teacher's identity through a chain of relationships.\"\n"
-    "\"2. The only explicitly named entity is Alexander the Great, a historical figure.\"\n"
-    "\"3. The question describes 'the philosopher who taught Alexander the Great' - this philosopher's identity is not given.\"\n"
-    "\"4. Since I need to determine who this philosopher was, their identity is an unknown entity.\"\n"
-    "\"5. Once I identify the philosopher, I need to determine who taught them - another unknown entity.\"\n"
-    "\"6. This is a classic multi-step question requiring the identification of two distinct unknown entities.\"\n"
-    "So the structure is: [Core Query: Who was the teacher Known Entities: {Subject: Alexander the Great, Limitation: historical figure} Unknown Entities: {Subject: Philosopher identity, Limitation: taught Alexander the Great}, {Subject: Teacher identity, Limitation: taught the identified philosopher}]\n\n"
-    
-    "Question: \"What musical technique is characteristic of compositions by the teacher of the pianist who performed at the opening ceremony of the 1980 Moscow Olympics?\"\n"
-    "CoT: Let's think step by step\n"
-    "\"1. The question seeks a musical technique characteristic of certain compositions.\"\n"
-    "\"2. The explicitly named entities are the 1980 Moscow Olympics and its opening ceremony.\"\n"
-    "\"3. The question refers to 'the pianist who performed' - this pianist's identity is not given.\"\n"
-    "\"4. It also refers to 'the teacher of the pianist' - this teacher's identity is also not given.\"\n"
-    "\"5. I need to discover three distinct pieces of information to answer this question.\"\n"
-    "\"6. First, I need to identify which pianist performed at the specified Olympic ceremony.\"\n"
-    "\"7. Then, I need to identify who taught this pianist.\"\n"
-    "\"8. Finally, I need to determine what musical technique characterizes the teacher's compositions.\"\n"
-    "\"9. Each of these represents a separate unknown entity that requires factual knowledge.\"\n"
-    "So the structure is: [Core Query: What musical technique is characteristic Known Entities: {Subject: Olympic ceremony, Limitation: opening, held in Moscow in 1980} Unknown Entities: {Subject: Pianist identity, Limitation: performed at specified Olympic ceremony}, {Subject: Teacher identity, Limitation: taught the identified pianist}, {Subject: Musical technique, Limitation: characteristic of the teacher's compositions}]\n\n"
-    
-    "Question: \"What scientific discovery was made by the mentor of the researcher who identified the double helix structure of DNA?\"\n"
-    "CoT: Let's think step by step\n"
-    "\"1. The question asks for a scientific discovery through a chain of relationships.\"\n"
-    "\"2. The explicitly named entity is DNA with its double helix structure specification.\"\n"
-    "\"3. The question refers to 'the researcher who identified' - this researcher's identity is not given.\"\n"
-    "\"4. It also refers to 'the mentor of the researcher' - this mentor's identity is also not given.\"\n"
-    "\"5. I need to discover three distinct pieces of information to answer this question.\"\n"
-    "\"6. First, I need to identify who discovered the double helix structure of DNA.\"\n"
-    "\"7. Then, I need to identify who mentored this researcher.\"\n"
-    "\"8. Finally, I need to determine what scientific discovery the mentor made.\"\n"
-    "\"9. Each of these represents a separate unknown entity that requires factual knowledge.\"\n"
-    "So the structure is: [Core Query: What scientific discovery was made Known Entities: {Subject: DNA, Limitation: biological molecule with double helix structure} Unknown Entities: {Subject: Researcher identity, Limitation: identified the double helix structure of DNA}, {Subject: Mentor identity, Limitation: mentored the identified researcher}, {Subject: Scientific discovery, Limitation: made by the identified mentor}]\n\n"
-    
-    "Question: \"Who is Boraqchin (Wife Of Ögedei)'s father-in-law?\"\n"
-    "CoT: Let's think step by step\n"
-    "\"1. The question asks for a scientific discovery through a chain of relationships.\"\n"
-    "\"2. The explicitly named entities are Boraqchin and Ögedei, with Boraqchin specifically identified as Ögedei's wife.\"\n"
-    "\"3. Since Boraqchin is identified as Ögedei's wife, her father-in-law would logically be Ögedei's father.\"\n"
-    "\"4. I need to determine who Ögedei's father was to identify Boraqchin's father-in-law.\"\n"
-    "\"5. The core query is seeking the identity of a specific person (the father-in-law).\"\n"
-    "\"6. The known entities are Boraqchin (with the limitation that she is Ögedei's wife) and Ögedei himself.\"\n"
-    "\"7. The question requires sequential reasoning: first identifying Ögedei's father, then understanding this person is Boraqchin's father-in-law.\"\n"
-    "\"8. This family relationship chain is central: spouse's father is father-in-law.\"\n"
-    "So the structure is: [Core Query: Who is person's father-in-law Known Entities: {Subject: Boraqchin, Limitation: Wife of Ögedei}, {Subject: Ögedei, Limitation: Boraqchin's husband} Unknown Entities: {Subject: Father-in-law identity, Limitation: father of Ögedei, spouse's father to Boraqchin}, {Subject: Family relationship chain, Limitation: spouse relationship connects Boraqchin to Ögedei's father}]\n\n"
+    "\"1.这个问题通过多步推理来询问一个首都。\"\n"
+    "\"2. 唯一明确命名的实体是炸药，这是一个已知的实体。\"\n"
+    "\"3. 我需要发现三个不同的信息来回答这个问题。\"\n"
+    "\"4. 首先，我需要确定谁发明了炸药——这个人没有被明确命名。\"\n"
+    "\"5. 然后，我需要确定这个人出生的国家。\"\n"
+    "\"6. 最后，我需要确定该国家的首都。\"\n"
+    "\"7. 这些中的每一个都代表了一个需要事实知识才能识别的未知实体。\"\n"
+    "So the structure is: [Core Query: What is the capital Known Entities: {Subject: 炸药, Limitation: 爆炸性的发明} Unknown Entities: {Subject: 发明者身份, Limitation: 发明炸药的人}, {Subject: 出生国家, Limitation: 已确认的发明家的出生地}, {Subject: 首都, Limitation: 已确定国家的首都}]\n\n"
 
-    "Question: \"What literary movement influenced the author who wrote the novel featuring a character who lives on Baker Street and solves mysteries using deductive reasoning?\"\n"
+    "Question: \"哪个文学运动影响了那位创作了以居住在贝克街、运用演绎推理破案的角色为主角的小说的作者？\"\n"
     "CoT: Let's think step by step\n"
-    "\"1. The question asks about a literary movement through a chain of relationships.\"\n"
-    "\"2. The explicitly named entity is Baker Street (a location).\"\n"
-    "\"3. The question describes a character with specific traits, but doesn't name them directly.\"\n"
-    "\"4. It also refers to 'the author who wrote' - this author's identity is not given.\"\n"
-    "\"5. I need to discover multiple distinct pieces of information to answer this question.\"\n"
-    "\"6. First, I need to identify which character lives on Baker Street and solves mysteries using deduction.\"\n"
-    "\"7. Then, I need to identify which author created this character.\"\n"
-    "\"8. Finally, I need to determine what literary movement influenced this author.\"\n"
-    "\"9. Each of these represents a separate unknown entity that requires factual knowledge.\"\n"
-    "So the structure is: [Core Query: What literary movement influenced Known Entities: {Subject: Baker Street, Limitation: fictional residence location}, {Subject: Deductive reasoning, Limitation: method used to solve mysteries} Unknown Entities: {Subject: Character identity, Limitation: lives on Baker Street, uses deductive reasoning}, {Subject: Author identity, Limitation: created the identified character}, {Subject: Literary movement, Limitation: influenced the identified author}]\n\n"
+    "\"1. 这个问题通过一系列关联来询问一个文学运动。\"\n"
+    "\"2.明确命名的实体是贝克街（一个地点）。\"\n"
+    "\"3. 这个问题描述了一个具有特定特征的角色，但没有直接说出他们的名字。\"\n"
+    "\"4. 它也指“那位写作的作者”——这位作者的身份并未给出。\"\n"
+    "\"5. 要回答这个问题，我需要找出多条不同的信息。\"\n"
+    "\"6. 首先，我需要确定哪个角色住在贝克街，并且运用推理来破解谜案。\"\n"
+    "\"7. 然后，我需要确定是哪位作者创作了这个角色。\"\n"
+    "\"8. 最后，我需要确定哪个文学流派影响了这位作家。\"\n"
+    "\"9. 这些中的每一个都代表一个需要事实性知识的独立未知实体。\"\n"
+    "So the structure is: [Core Query: What literary movement influenced Known Entities: {Subject: 贝克街, Limitation: 虚构的居住地点}, {Subject: 演绎推理, Limitation: 用于破解谜团的方法} Unknown Entities: {Subject: 角色身份, Limitation: 住在贝克街，运用演绎推理}, {Subject: 作者身份, Limitation: 创造了所识别出的角色}, {Subject: 文学运动, Limitation: 影响了已确定的作者}]\n\n"
     
-    "Question: \"What painting technique was pioneered by the artist who created the most expensive artwork sold at auction in the same decade that the Berlin Wall fell?\"\n"
+    "Question: \"2010年获得最佳影片奖的那部电影的导演出生在哪个城市？\"\n"
     "CoT: Let's think step by step\n"
-    "\"1. The question asks about a painting technique through a chain of relationships.\"\n"
-    "\"2. The explicitly named entity is the Berlin Wall, with its fall as a historical event.\"\n"
-    "\"3. The question refers to 'the artist who created' - this artist's identity is not given.\"\n"
-    "\"4. It also refers to 'the most expensive artwork' - this artwork's identity is not given.\"\n"
-    "\"5. I need to discover multiple distinct pieces of information to answer this question.\"\n"
-    "\"6. First, I need to identify when the Berlin Wall fell and what decade that was.\"\n"
-    "\"7. Then, I need to identify which artwork was the most expensive sold at auction in that decade.\"\n"
-    "\"8. Next, I need to identify who created that artwork.\"\n"
-    "\"9. Finally, I need to determine what painting technique this artist pioneered.\"\n"
-    "\"10. Each of these represents a separate unknown entity that requires factual knowledge.\"\n"
-    "So the structure is: [Core Query: What painting technique was pioneered Known Entities: {Subject: Berlin Wall, Limitation: historical structure that fell} Unknown Entities: {Subject: Decade, Limitation: when Berlin Wall fell}, {Subject: Artwork, Limitation: most expensive sold at auction in identified decade}, {Subject: Artist identity, Limitation: created the identified artwork}, {Subject: Painting technique, Limitation: pioneered by the identified artist}]\n\n"
-    
-    "Question: \"What philosophical concept was central to the teachings of the professor who mentored the author of the most influential paper on artificial intelligence published in the 1950s?\"\n"
-    "CoT: Let's think step by step\n"
-    "\"1. The question asks about a philosophical concept through a chain of relationships.\"\n"
-    "\"2. The explicitly named entities are artificial intelligence (field) and the 1950s (time period).\"\n"
-    "\"3. The question refers to 'the author of the most influential paper' - this author's identity is not given.\"\n"
-    "\"4. It also refers to 'the professor who mentored the author' - this professor's identity is not given.\"\n"
-    "\"5. I need to discover multiple distinct pieces of information to answer this question.\"\n"
-    "\"6. First, I need to identify which paper on AI from the 1950s was most influential.\"\n"
-    "\"7. Then, I need to identify who authored this paper.\"\n"
-    "\"8. Next, I need to identify who mentored this author.\"\n"
-    "\"9. Finally, I need to determine what philosophical concept was central to this mentor's teachings.\"\n"
-    "\"10. Each of these represents a separate unknown entity that requires factual knowledge.\"\n"
-    "So the structure is: [Core Query: What philosophical concept was central Known Entities: {Subject: Artificial intelligence, Limitation: academic field}, {Subject: 1950s, Limitation: time period} Unknown Entities: {Subject: Paper identity, Limitation: most influential on AI, published in 1950s}, {Subject: Author identity, Limitation: wrote the identified paper}, {Subject: Professor identity, Limitation: mentored the identified author}, {Subject: Philosophical concept, Limitation: central to the identified professor's teachings}]\n\n"
-    
-    "Question: \"Which city was the birthplace of both Albert Einstein and Max Planck?\"\n"
-    "CoT: Let's think step by step\n"
-    "\"1. This question asks about a city that is the birthplace of two specific people.\"\n"
-    "\"2. The explicitly named entities are Albert Einstein and Max Planck, both historical scientists.\"\n"
-    "\"3. The question contains the logical 'both...and' construction, indicating that the city must satisfy two conditions simultaneously.\"\n"
-    "\"4. I need to discover two distinct pieces of information and check if they match.\"\n"
-    "\"5. First, I need to identify where Albert Einstein was born.\"\n"
-    "\"6. Then, I need to identify where Max Planck was born.\"\n"
-    "\"7. Finally, I need to determine if these are the same city.\"\n"
-    "So the structure is: [Core Query: Which city Known Entities: {Subject: Albert Einstein, Limitation: historical scientist}, {Subject: Max Planck, Limitation: historical scientist} Unknown Entities: {Subject: Einstein's birthplace, Limitation: city where Albert Einstein was born}, {Subject: Planck's birthplace, Limitation: city where Max Planck was born}, {Subject: Common birthplace, Limitation: city that satisfies both conditions if it exists}]\n\n"
-
-    "Question: \"What is the capital of France or Italy?\"\n"
-    "CoT: Let's think step by step\n"
-    "\"1. This question asks about the capital city of either France or Italy.\"\n"
-    "\"2. The explicitly named entities are France and Italy, both countries.\"\n"
-    "\"3. The question contains a logical 'or' that creates two distinct possibilities.\"\n"
-    "\"4. Each country's capital represents a separate unknown entity we might need to identify.\"\n"
-    "\"5. The core query is asking for capital identification, but we need to clarify which country's capital is being requested.\"\n"
-    "So the structure is: [Core Query: What is the capital Known Entities: {Subject: France, Limitation: country}, {Subject: Italy, Limitation: country} Unknown Entities: {Subject: France's capital, Limitation: capital city of France}, {Subject: Italy's capital, Limitation: capital city of Italy}]\n\n"
-
-    "Question: \"The chemical element discovered by Marie Curie is used in which medical procedure?\"\n"
-    "CoT: Let's think step by step\n"
-    "\"1. This question asks about a medical procedure using a specific chemical element.\"\n"
-    "\"2. The explicitly named entity is Marie Curie, a historical scientist.\"\n"
-    "\"3. The question refers to 'the chemical element discovered by Marie Curie' - this element is not named.\"\n"
-    "\"4. I need to discover two distinct pieces of information to answer this question.\"\n"
-    "\"5. First, I need to identify which chemical element was discovered by Marie Curie.\"\n"
-    "\"6. Then, I need to identify which medical procedure uses this element.\"\n"
-    "\"7. Each of these represents a separate unknown entity that requires factual knowledge.\"\n"
-    "So the structure is: [Core Query: Which medical procedure Known Entities: {Subject: Marie Curie, Limitation: historical scientist} Unknown Entities: {Subject: Chemical element, Limitation: discovered by Marie Curie}, {Subject: Medical procedure, Limitation: uses the identified chemical element}]\n\n"
-    
-    "Question: \"The country bordered by the most nations is located on which continent?\"\n"
-    "CoT: Let's think step by step\n"
-    "\"1. This question asks about the continent where a specific country is located.\"\n"
-    "\"2. There are no explicitly named entities in this question.\"\n"
-    "\"3. The question refers to 'the country bordered by the most nations' - this country is not named.\"\n"
-    "\"4. I need to discover two distinct pieces of information to answer this question.\"\n"
-    "\"5. First, I need to identify which country shares borders with the most other countries.\"\n"
-    "\"6. Then, I need to determine which continent this country is located on.\"\n"
-    "\"7. Each of these represents a separate unknown entity that requires factual knowledge.\"\n"
-    "So the structure is: [Core Query: Which continent Known Entities: {} Unknown Entities: {Subject: Country identity, Limitation: bordered by the most nations}, {Subject: Continent identity, Limitation: contains the identified country}]\n\n"
-    
-    "Question: \"The director of the movie that won Best Picture in 2010 was born in which city?\"\n"
-    "CoT: Let's think step by step\n"
-    "\"1. This question asks about a birthplace through a chain of relationships.\"\n"
-    "\"2. The explicitly named entity is the year 2010, a time period.\"\n"
-    "\"3. The question refers to 'the movie that won Best Picture in 2010' - this movie is not named.\"\n"
-    "\"4. It also refers to 'the director of the movie' - this director is not named.\"\n"
-    "\"5. I need to discover three distinct pieces of information to answer this question.\"\n"
-    "\"6. First, I need to identify which movie won Best Picture in 2010.\"\n"
-    "\"7. Then, I need to identify who directed this movie.\"\n"
-    "\"8. Finally, I need to determine which city this director was born in.\"\n"
-    "\"9. Each of these represents a separate unknown entity that requires factual knowledge.\"\n"
-    "So the structure is: [Core Query: Which city Known Entities: {Subject: Best Picture award, Limitation: given in 2010}, {Subject: 2010, Limitation: specific year} Unknown Entities: {Subject: Movie identity, Limitation: won Best Picture in 2010}, {Subject: Director identity, Limitation: directed the identified movie}, {Subject: Birthplace, Limitation: city where the identified director was born}]\n\n"
-    
+    "\"1. 这个问题通过一连串的关系来询问出生地。\"\n"
+    "\"2. 明确命名的实体是2010年，一个时间段。\"\n"
+    "\"3. 这个问题提到了“2010年获得最佳影片奖的电影”——这部电影并未被命名。\"\n"
+    "\"4. 它也指“这部电影的导演”——这位导演没有名字。\"\n"
+    "\"5. 我需要找出三条不同的信息来回答这个问题。\"\n"
+    "\"6. 首先，我需要确定哪部电影获得了2010年的最佳影片奖。\"\n"
+    "\"7. 然后，我需要确定这部电影的导演是谁。\"\n"
+    "\"8. 最后，我需要确定这位导演出生在哪个城市。\"\n"
+    "\"9. 这些中的每一个都代表一个需要事实性知识的独立未知实体。\"\n"
+    "So the structure is: [Core Query: Which city Known Entities: {Subject: 最佳影片奖, Limitation: 2010年给出的}, {Subject: 2010, Limitation: 特定的年份} Unknown Entities: {Subject: 电影身份, Limitation:在2010年获得了最佳影片奖}, {Subject: 导演身份, Limitation: 执导了这部已确定的电影}, {Subject: 出生地, Limitation: 已确认的导演出生的城市}]\n\n"
 )
     
     system_prompt = (
-        "You will analyze questions by breaking them down into their components. For each question, your response MUST strictly follow this format:\n\n"
-        "1. Begin with 'CoT: Let's think step by step'\n"
-        "2. Number your reasoning steps as \"1.\", \"2.\", etc., each in quotes\n"
-        "3. After your reasoning, write 'So the structure is:' followed by the structured breakdown\n\n"
+        "你将通过把问题分解成各个组成部分来分析问题。对于每个问题，你的回答必须严格遵循以下格式：\n\n"
+        "1. 从'CoT: Let's think step by step'开始\n"
+        "2. 将你的推理步骤编号为“1.”、“2.”等，每个编号都放在引号中\n"
+        "3. 推理后, 写下 'So the structure is:' 随后是结构化的分解\n\n"
         
-        "The structure breakdown should contain these three components:\n"
-        "- **Core Query**: The primary information being sought.\n"
-        "- **Known Entities**: Information explicitly provided in the question, structured as {Subject: Entity, Limitation: time/space/other constraints}.\n"
-        "- **Unknown Entities**: Information needed to answer the question, including intermediate steps in multi-hop questions, structured in the same format as Known Entities.\n\n"
+        "结构分解应包含以下三个组成部分：\n"
+        "- **Core Query**: 正在寻求的主要信息。\n"
+        "- **Known Entities**: 问题中明确提供的信息, 例如 {Subject: 实体, Limitation: 时间/空间/其他限制条件}.\n"
+        "- **Unknown Entities**: 回答问题所需的信息，包括多跳问题中的中间步骤，其结构与已知实体的格式相同。\n\n"
         
-        "Key principles:\n"
-        "- Use consistent formatting: {Subject: Entity, Limitation: constraints}\n"
-        "- Group subjects with their limitations in both sections\n"
-        "- Include time periods, locations, and other qualifiers as limitations\n"
-        "- Identify ALL unknown entities needed, including intermediate steps in multi-hop questions\n"
-        "- Distinguish between explicitly mentioned (known) and implied/needed (unknown) information\n"
-        "- Be precise about which limitations apply to which subjects\n"
-        "- Ensure entities don't appear in both known and unknown categories\n\n"
+        "核心原则：\n"
+        "- 使用一致的格式： {Subject: 实体, Limitation: 限制}\n"
+        "- 将两个部分中具有各自局限性的主题进行分组\n"
+        "- 将时间段、地点和其他限定词作为限制条件包含在内\n"
+        "- 识别所有需要的未知实体，包括多跳问题中的中间步骤\n"
+        "- 区分明确提及的内容 (known) 以及隐含的/所需的 (unknown) 信息\n"
+        "- 要明确哪些限制适用于哪些对象\n"
+        "- 确保实体不会同时出现在已知类别和未知类别中\n\n"
         
-        "The EXACT format for your final output must be:\n"
+        "您最终输出的确切格式必须是：\n"
         "CoT: Let's think step by step\n"
-        "\"1. [reasoning step]\"\n"
-        "\"2. [reasoning step]\"\n"
-        "... more reasoning steps as needed ...\n"
-        "So the structure is: [Core Query: ... Known Entities: {Subject: Entity, Limitation: constraints}, {Subject: Another Entity, Limitation: constraints} Unknown Entities: {Subject: Entity, Limitation: constraints}, {Subject: Another Entity, Limitation: constraints}]"
+        "\"1. [推理步骤]\"\n"
+        "\"2. [推理步骤]\"\n"
+        "... 根据需要增加更多推理步骤 ...\n"
+        "So the structure is: [Core Query: ... Known Entities: {Subject: 实体, Limitation: 限制}, {Subject: 其他实体, Limitation: 限制} Unknown Entities: {Subject: 实体, Limitation: 限制}, {Subject: 其他实体, Limitation: 限制}]"
     )
     
     user_message = examples_string + "\nQuestion: \"" + question + "\"\n"
@@ -626,264 +508,117 @@ def get_examples_database():
     examples = [
         
         {
-            "question": "What is the capital of France or Italy?",
-            "structure": "[Core Query: What is the capital Known Entities: {Subject: France, Limitation: country}, {Subject: Italy, Limitation: country} Unknown Entities: {Subject: Capital of France, Limitation: city serving as French capital}, {Subject: Capital of Italy, Limitation: city serving as Italian capital}]",
+            "question": "法国或意大利的首都是什么？",
+            "structure": "[Core Query: What is the capital Known Entities: {Subject: 法国, Limitation: 国家}, {Subject: 意大利, Limitation: 国家} Unknown Entities: {Subject: 法国首都, Limitation: 作为法国首都的城市}, {Subject: 意大利首都, Limitation: 作为意大利首都的城市}]",
             "type": "Parallel",
-            "cot": "Let's think step by step. First, I need to determine if decomposition is necessary. The core query is 'What is the capital', but the question contains the logical operator 'OR' connecting two countries: France and Italy. The known entities are the countries France and Italy. Looking at the unknown entities, I need to identify the capital city of each country. The logical 'OR' suggests the user wants information about either one or both capitals. I can deliberately IGNORE other cities in these countries or government structures - while these would provide context about the countries, they don't help identify their capitals. This requires parallel decomposition to independently determine each capital before presenting the information about both possibilities.",
-            "subq1": "What is the capital of France?",
-            "subq2": "What is the capital of Italy?"
+            "cot": "Let's think step by step\n 首先，我需要确定是否有必要进行分解。核心查询是“首都是什么”，但这个问题包含逻辑运算符“或”，连接了两个国家：法国和意大利。已知的实体是法国和意大利这两个国家。查看未知实体，我需要确定每个国家的首都。逻辑运算符“或”表明用户希望了解其中一个或两个国家的首都信息。我可以刻意忽略这些国家的其他城市或政府结构——虽然这些信息能提供有关这些国家的背景，但对确定它们的首都没有帮助。这需要进行并行分解，先独立确定每个国家的首都，然后再呈现这两种可能性的相关信息。",
+            "subq1": "法国的首都是什么？",
+            "subq2": "意大利的首都是什么？"
         },
         {
-            "question": "What language is spoken in both Switzerland and Luxembourg?",
-            "structure": "[Core Query: What language is spoken in both Known Entities: {Subject: Switzerland, Limitation: country}, {Subject: Luxembourg, Limitation: country} Unknown Entities: {Subject: Languages of Switzerland, Limitation: officially spoken in Switzerland}, {Subject: Languages of Luxembourg, Limitation: officially spoken in Luxembourg}, {Subject: Common languages, Limitation: spoken in both countries}]",
+            "question": "瑞士和卢森堡都使用的语言是什么？",
+            "structure": "[Core Query: What language is spoken in both Known Entities: {Subject: 瑞士, Limitation: 国家}, {Subject: 卢森堡, Limitation: 国家} Unknown Entities: {Subject: 瑞士语言, Limitation: 瑞士官方语言}, {Subject: 卢森堡语言, Limitation: 卢森堡官方语言}, {Subject: 共同语言, Limitation: 在两个国家都使用的语言}]",
             "type": "Parallel",
-            "cot": "Let's think step by step. First, I need to evaluate if decomposition is necessary. The core query asks 'What language is spoken in both', seeking languages common to two countries. The known entities are Switzerland and Luxembourg. The logical 'BOTH' indicates I need to find the intersection of two sets. Looking at the unknown entities, I need to identify languages spoken in Switzerland and languages spoken in Luxembourg, then determine which appear in both sets. I can deliberately IGNORE dialect variations or historical language development - while linguistically interesting, they don't help identify which official languages are shared between the countries. This requires parallel decomposition to independently determine each set of languages before finding their intersection.",
-            "subq1": "What languages are spoken in Switzerland?",
-            "subq2": "What languages are spoken in Luxembourg?"
+            "cot": "Let's think step by step\n 首先，我需要评估是否有必要进行分解。核心问题是“在两者都使用的语言是什么”，即寻找两个国家共同的语言。已知的实体是瑞士和卢森堡。逻辑词“两者都（BOTH）”表明我需要找到两个集合的交集。查看未知实体，我需要确定瑞士使用的语言和卢森堡使用的语言，然后找出在两个集合中都出现的语言。我可以特意忽略方言变体或语言的历史发展——尽管从语言学角度来看很有趣，但它们对确定两国共有的官方语言没有帮助。这需要进行并行分解，先分别确定每个国家的语言集合，再找出它们的交集。",
+            "subq1": "瑞士使用的语言是什么？",
+            "subq2": "卢森堡使用的语言是什么？"
         },
         {
-    "question": "Which actor starred in The Godfather and Apocalypse Now?",
-    "structure": "[Core Query: Which actor starred Known Entities: {Subject: The Godfather, Limitation: film}, {Subject: Apocalypse Now, Limitation: film} Unknown Entities: {Subject: Godfather cast, Limitation: actors who starred in The Godfather}, {Subject: Apocalypse Now cast, Limitation: actors who starred in Apocalypse Now}, {Subject: Common actors, Limitation: appeared in both films}]",
-    "type": "Parallel",
-    "cot": "Let's think step by step. First, I need to determine if decomposition is necessary. The core query asks 'Which actor starred', seeking performers common to two films. The known entities are The Godfather and Apocalypse Now. The logical 'AND' indicates I need to find the intersection of two sets. Looking at the unknown entities, I need to identify actors who starred in The Godfather and actors who starred in Apocalypse Now, then determine who appears in both casts. I can deliberately IGNORE directors, release dates, or plot details - while these provide context about the films, they don't help identify which actors appeared in both. This requires parallel decomposition to independently determine each cast list before finding their intersection.",
-    "subq1": "Which actors starred in The Godfather?",
-    "subq2": "Which actors starred in Apocalypse Now?"
-},
-        
-        {
-            "question": "When did the director of the film \"The Seventh Seal\" die?",
-            "structure": "[Core Query: When did person die Known Entities: {Subject: Film, Limitation: \"The Seventh Seal\"} Unknown Entities: {Subject: Director identity, Limitation: of \"The Seventh Seal\"}, {Subject: Death date, Limitation: of identified director}, {Subject: Director career, Limitation: other works}, {Subject: Film details, Limitation: release date, critical reception}]",
-            "type": "Sequential",
-            "cot": "Let's think step by step. First, I'll determine if decomposition is necessary. The core query is 'When did person die', seeking a death date. The known entity is the film 'The Seventh Seal'. Looking at the unknown entities, I need director identity and death date to answer the question. I must first identify the director before finding their death date, as that's a clear dependency. However, I can deliberately IGNORE the director's career and film details - while they provide context about the director and film, they're not essential for answering when the director died. This requires sequential decomposition to first identify the director, then find their death date.",
-            "subq1": "Who directed the film \"The Seventh Seal\"?",
-            "subq2": "When did [answer_subquestion1] die?"
+        "question": "孛剌合真（窝阔台的妻子）的公公是谁？",
+        "structure": "[Core Query: Who is person's father-in-law Known Entities: {Subject: 孛剌合真, Limitation: 窝阔台的妻子}, {Subject: 窝阔台, Limitation: 孛剌合真的丈夫} Unknown Entities: {Subject: 岳父身份, Limitation: 窝阔台的父亲, 孛剌合真的配偶的父亲}, {Subject: 家庭关系链, Limitation: 配偶关系将孛剌合真与窝阔台的父亲联系起来}]",
+        "type": "Sequential",
+        "cot": "Let's think step by step\n 首先，我需要确定是否有必要进行分解。核心问题是“某人的岳父是谁”。已知的实体是“孛剌合真”和“窝阔台”。查看未知实体，我需要确定孛剌合真的岳父是谁。由于孛剌合真被明确认定为窝阔台的妻子，她的岳父应该是窝阔台的父亲。我可以刻意忽略关于这些人物的历史背景——虽然这可能会提供有趣的背景信息，但对确定窝阔台的父亲是谁并无帮助。这需要进行顺序分解，因为要找到孛剌合真的岳父，首先得确定孛剌合真的配偶是谁，然后再确定该配偶的父亲是谁。",
+        "subq1": "博剌忽真的配偶是谁？",
+        "subq2": "谁是[answer_subquestion1]的父亲？"
         },
-        {
-    "question": "Who is Boraqchin (Wife Of Ögedei)'s father-in-law?",
-    "structure": "[Core Query: Who is person's father-in-law Known Entities: {Subject: Boraqchin, Limitation: Wife of Ögedei}, {Subject: Ögedei, Limitation: Boraqchin's husband} Unknown Entities: {Subject: Father-in-law identity, Limitation: father of Ögedei, spouse's father to Boraqchin}, {Subject: Family relationship chain, Limitation: spouse relationship connects Boraqchin to Ögedei's father}]",
-    "type": "Sequential",
-    "cot": "Let's think step by step. First, I need to determine if decomposition is necessary. The core query is 'Who is person's father-in-law'. The known entities are 'Boraqchin' and 'Ögedei'. Looking at the unknown entities, I need to identify Boraqchin's father-in-law. Since Boraqchin is explicitly identified as Ögedei's wife, her father-in-law would be Ögedei's father. I can deliberately IGNORE historical context about these figures - while this might provide interesting background, it doesn't help identify the specific person who is Ögedei's father. This requires sequential decomposition because finding Boraqchin's father-in-law depends on first identifying who Boraqchin's spouse is, then determining who that person's father was.",
-    "subq1": "Who is Boraqchin's spouse?",
-    "subq2": "Who is [answer_subquestion1]'s father?"
-},
 
         {
-            "question": "Did the composer of \"Symphony No. 9\" (Choral Symphony) die after the painter of \"The Starry Night\"?",
-            "structure": "[Core Query: Did person A die after person B Known Entities: {Subject: Symphony, Limitation: \"Symphony No. 9\" (Choral Symphony)}, {Subject: Painting, Limitation: \"The Starry Night\"} Unknown Entities: {Subject: Composer identity, Limitation: of Symphony No. 9}, {Subject: Painter identity, Limitation: of The Starry Night}, {Subject: Death date, Limitation: of identified composer}, {Subject: Death date, Limitation: of identified painter}, {Subject: Birth dates, Limitation: of both artists}, {Subject: Artistic styles, Limitation: of both artists}]",
+            "question": "《第九交响曲》（《合唱交响曲》）的作曲家是在《星月夜》的画家之后去世的吗？",
+            "structure": "[Core Query: Did person A die after person B Known Entities: {Subject: 交响乐, Limitation: \"第九交响曲\" （《合唱交响曲》）}, {Subject: 绘画作品, Limitation: \"《星月夜》\"} Unknown Entities: {Subject: 作曲家身份, Limitation: 第九交响曲的}, {Subject: 画家身份, Limitation: 《星月夜》的}, {Subject: 死亡日期, Limitation: 已确认的作曲家的}, {Subject: 死亡日期, Limitation: 已确认画家的}, {Subject: 出生日期, Limitation: 两位艺术家的}, {Subject: 艺术风格, Limitation:两位艺术家的}]",
             "type": "Parallel",
-            "cot": "Let's think step by step. First, I need to determine if decomposition is necessary. The core query compares two death dates: 'Did person A die after person B'. Known entities are the works 'Symphony No. 9' and 'The Starry Night'. Examining the unknown entities, I need composer identity, painter identity, and their death dates to make the comparison. I can deliberately IGNORE birth dates and artistic styles - while these might be interesting for context, they don't contribute to determining who died after whom. This requires parallel decomposition since I need to find each death date independently before comparing them.",
-            "subq1": "When did the composer of \"Symphony No. 9\" (Choral Symphony) die?",
-            "subq2": "When did the painter of \"The Starry Night\" die?"
+            "cot": "Let's think step by step\n 首先，我需要确定是否有必要进行分解。核心查询是比较两个死亡日期：“A人物是否在B人物之后去世”。已知实体是作品《第九交响曲》和《星月夜》。查看未知实体，我需要作曲家身份、画家身份以及他们的死亡日期来进行比较。我可以刻意忽略出生日期和艺术风格——虽然这些信息可能对了解背景有帮助，但对确定谁先去世谁后去世并无帮助。这需要进行并行分解，因为我需要先分别找到每个人的死亡日期，然后再进行比较。",
+            "subq1": "《第九交响曲》（《合唱交响曲》）的作曲家是何时去世的？",
+            "subq2": "《星月夜》的画家是何时去世的？"
         },
         
         {
-            "question": "Which instrument did the composer of \"Symphony No. 9\" (Choral Symphony) play as a child?",
-            "structure": "[Core Query: Which instrument did person play as a child Known Entities: {Subject: Symphony, Limitation: \"Symphony No. 9\" (Choral Symphony)} Unknown Entities: {Subject: Composer identity, Limitation: of Symphony No. 9}, {Subject: Instrument, Limitation: played by identified composer during childhood}, {Subject: Musical education, Limitation: training of composer}, {Subject: Composition style, Limitation: characteristics of composer's work}]",
+            "question": "《第九交响曲》（《合唱交响曲》）的作曲家小时候演奏的是哪种乐器？",
+            "structure": "[Core Query: Which instrument did person play as a child Known Entities: {Subject: 交响乐, Limitation: \"第九交响曲\" （《合唱交响曲》）} Unknown Entities: {Subject: 作曲家身份, Limitation: 第九交响曲的}, {Subject: 乐器, Limitation: 作曲家小时候演奏的}, {Subject: 音乐教育, Limitation: 作曲家的音乐训练}, {Subject: 作曲风格, Limitation: 作曲家作品的特点}]",
             "type": "Sequential",
-            "cot": "Let's think step by step. First, I need to evaluate if decomposition is necessary. The core query asks 'Which instrument did person play as a child'. The known entity is 'Symphony No. 9'. Looking at the unknown entities, I need to identify the composer first, then determine what instrument they played as a child. I can deliberately IGNORE musical education and composition style - while relevant to the composer's development, they don't directly answer what specific instrument was played. This requires sequential decomposition because identifying the childhood instrument depends on first knowing who the composer was.",
-            "subq1": "Who composed \"Symphony No. 9\" (Choral Symphony)?",
-            "subq2": "Which instrument did [answer_subquestion1] play as a child?"
+            "cot": "Let's think step by step\n 首先，我需要评估是否有必要进行分解。核心问题是“这个人小时候演奏什么乐器”。已知的实体是《第九交响曲》。查看未知实体，我需要先确定作曲家是谁，然后再确定他们小时候演奏什么乐器。我可以刻意忽略音乐教育和作曲风格——尽管它们与作曲家的成长相关，但并不直接回答演奏的具体乐器是什么。这需要按顺序进行分解，因为要确定小时候演奏的乐器，首先得知道作曲家是谁。",
+            "subq1": "谁创作了《第九交响曲》（《合唱交响曲》）？",
+            "subq2": "[answer_subquestion1]小时候演奏的是哪种乐器？"
         },
         
         {
-            "question": "In which calendar year did the literary figure responsible for penning the dystopian novel '1984' ultimately pass away?",
-            "structure": "[Core Query: In which year did person pass away Known Entities: {Subject: Novel, Limitation: dystopian, titled '1984'} Unknown Entities: {Subject: Author identity, Limitation: of the novel '1984'}, {Subject: Death year, Limitation: of identified author}, {Subject: Other works, Limitation: by same author}, {Subject: Political views, Limitation: of author that influenced novel}]",
+            "question": "《1984》这部反乌托邦小说的作者是在哪一年去世的？",
+            "structure": "[Core Query: In which year did person pass away Known Entities: {Subject: 小说, Limitation: 反乌托邦} Unknown Entities: {Subject: 作者身份, Limitation: 小说《1984》的}, {Subject: 逝世年份, Limitation: 已确认作者的}, {Subject: 其他作品, Limitation: 由同一作者所著}, {Subject: 政治观点, Limitation: 影响小说的作者}]",
             "type": "Sequential",
-            "cot": "Let's think step by step. First, I'll assess if decomposition is necessary. The core query seeks a death year with 'In which year did person pass away'. The known entity is the novel '1984'. Looking at the unknown entities, I need to identify the author first, then determine their death year. I can deliberately IGNORE other works and political views - while these provide context about the author's career and influences, they don't help identify when the author died. This requires sequential decomposition since finding the death year depends on first identifying the author.",
-            "subq1": "Who authored the dystopian novel '1984'?",
-            "subq2": "In which year did [answer_subquestion1] pass away?"
+            "cot": "Let's think step by step\n 首先，我需要评估是否有必要进行分解。核心查询是“某人在哪一年去世”。已知实体是小说《1984》。查看未知实体，我需要先确定作者是谁，然后确定他们的死亡年份。我可以刻意忽略其他作品和政治观点——虽然这些提供了关于作者职业生涯和影响的信息，但它们并不直接帮助确定作者的死亡年份。这需要按顺序进行分解，因为找到死亡年份依赖于首先识别出作者。",
+            "subq1": "谁创作了反乌托邦小说《1984》？",
+            "subq2": "在[answer_subquestion1]去世的那一年是哪一年？"
         },
         
         {
-            "question": "When did the director of film Hypocrite (Film) die?",
-            "structure": "[Core Query: When did person die Known Entities: {Subject: Film, Limitation: titled \"Hypocrite\"} Unknown Entities: {Subject: Director identity, Limitation: of film Hypocrite}, {Subject: Death date, Limitation: of identified director}, {Subject: Film release date, Limitation: when Hypocrite was released}, {Subject: Director's filmography, Limitation: other films by same director}]",
-            "type": "Sequential",
-            "cot": "Let's think step by step. First, I need to determine if decomposition is necessary. The core query is 'When did person die', asking for a death date. The known entity is the film 'Hypocrite'. Looking at the unknown entities, I need to identify the director before I can find their death date. I can deliberately IGNORE the film release date and director's filmography - while these provide context about the film and director's career, they don't help determine when the director died. This requires sequential decomposition because finding the death date depends on first identifying who directed the film.",
-            "subq1": "Who directed the film Hypocrite (Film)?",
-            "subq2": "When did [answer_subquestion1] die?"
-        },
-        
-        {
-            "question": "Are both Kurram Garhi and Trojkrsti located in the same country?",
-            "structure": "[Core Query: Are both located in the same country Known Entities: {Subject: Kurram Garhi, Limitation: location name}, {Subject: Trojkrsti, Limitation: location name} Unknown Entities: {Subject: Country, Limitation: containing Kurram Garhi}, {Subject: Country, Limitation: containing Trojkrsti}, {Subject: Geographic features, Limitation: of both locations}, {Subject: Population data, Limitation: of both locations}]",
+            "question": "库拉姆加希和特罗伊克里斯蒂都位于同一个国家吗？",
+            "structure": "[Core Query: Are both located in the same country Known Entities: {Subject: 库拉姆加希, Limitation: 地点名称}, {Subject: 特罗伊克里斯蒂, Limitation: 地点名称} Unknown Entities: {Subject: 城市, Limitation: 包含库拉姆加希}, {Subject: 城市, Limitation: 包含特罗伊克里斯蒂}, {Subject:地理特征, Limitation: 两个地点的}, {Subject: 人口数据, Limitation: 两个地点的}]",
             "type": "Parallel",
-            "cot": "Let's think step by step. First, I need to assess if decomposition is necessary. The core query asks 'Are both located in the same country', a comparison question. Known entities are locations 'Kurram Garhi' and 'Trojkrsti'. Looking at the unknown entities, I need to determine the country for each location to make the comparison. I can deliberately IGNORE geographic features and population data - while these provide context about the locations, they don't help determine which countries they're in. This requires parallel decomposition to independently determine each location's country before comparing them.",
-            "subq1": "In which country is Kurram Garhi located?",
-            "subq2": "In which country is Trojkrsti located?"
+            "cot": "Let's think step by step\n 首先，我需要评估是否有必要进行分解。核心问题是“两个地点是否位于同一个国家”，这是一个比较问题。已知实体是地点“库拉姆加希”和“特罗伊克里斯蒂”。查看未知实体，我需要确定每个地点所属的国家以进行比较。我可以刻意忽略地理特征和人口数据——虽然这些提供了关于地点的背景信息，但它们并不帮助确定这些地点属于哪个国家。这需要并行分解，以独立地确定每个地点所属的国家后再进行比较。",
+            "subq1": "库拉姆加希位于哪个国家？",
+            "subq2": "特罗伊克里斯蒂位于哪个国家？"
         },
         
         {
-            "question": "Do director of film Coolie No. 1 (1995 Film) and director of film The Sensational Trial have the same nationality?",
-            "structure": "[Core Query: Do person A and person B have the same nationality Known Entities: {Subject: Film A, Limitation: Coolie No. 1 (1995)}, {Subject: Film B, Limitation: The Sensational Trial} Unknown Entities: {Subject: Director A identity, Limitation: of Coolie No. 1}, {Subject: Director B identity, Limitation: of The Sensational Trial}, {Subject: Nationality, Limitation: of Director A}, {Subject: Nationality, Limitation: of Director B}, {Subject: Film genres, Limitation: of both films}, {Subject: Box office performance, Limitation: of both films}]",
+            "question": "1995年电影《Coolie No. 1》的导演和电影《The Sensational Trial》的导演国籍相同吗？",
+            "structure": "[Core Query: Do person A and person B have the same nationality Known Entities: {Subject: 电影A, Limitation: 《Coolie No. 1》（1995年）}, {Subject: 电影B, Limitation: 《The Sensational Trial》} Unknown Entities: {Subject: A导演的身份, Limitation: 《Coolie No. 1》的}, {Subject: B导演的身份, Limitation: 《The Sensational Trial》的}, {Subject: 国籍, Limitation: A导演的}, {Subject: 国籍, Limitation: B导演的}, {Subject: 电影类型, Limitation: 两部电影的}, {Subject: 票房表现, Limitation: 两部电影的}]",
             "type": "Parallel",
-            "cot": "Let's think step by step. First, I need to determine if decomposition is necessary. The core query asks if two people share the same nationality. Known entities are the films 'Coolie No. 1' and 'The Sensational Trial'. Looking at the unknown entities, I need to identify each director and their nationalities to make the comparison. I can deliberately IGNORE film genres and box office performance - while these provide context about the films, they're irrelevant to the directors' nationalities. This requires parallel decomposition since I can find each director's nationality independently before comparing them.",
-            "subq1": "What is the nationality of the director of Coolie No. 1 (1995 Film)?",
-            "subq2": "What is the nationality of the director of The Sensational Trial?"
-        },
-        
-       
-        
-        {
-            "question": "Who was born first out of Martin Hodge and Ivania Martinich?",
-            "structure": "[Core Query: Who was born first Known Entities: {Subject: Martin Hodge, Limitation: person for comparison}, {Subject: Ivania Martinich, Limitation: person for comparison} Unknown Entities: {Subject: Birth date, Limitation: of Martin Hodge}, {Subject: Birth date, Limitation: of Ivania Martinich}, {Subject: Professional accomplishments, Limitation: of both individuals}, {Subject: Nationality, Limitation: of both individuals}]",
-            "type": "Parallel",
-            "cot": "Let's think step by step. First, I need to determine if decomposition is necessary. The core query is 'Who was born first', a comparison of birth dates. Known entities are 'Martin Hodge' and 'Ivania Martinich'. Looking at the unknown entities, I need the birth dates of both individuals to determine who was born first. I can deliberately IGNORE professional accomplishments and nationalities - while these might provide context about who these people are, they're irrelevant to determining birth order. This requires parallel decomposition to independently find each birth date before comparing them.",
-            "subq1": "When was Martin Hodge born?",
-            "subq2": "When was Ivania Martinich born?"
+            "cot": "Let's think step by step\n 首先，我需要确定是否有必要进行分解。核心问题是询问两个人是否拥有相同的国籍。已知实体是电影《Coolie No. 1》和《The Sensational Trial》。查看未知实体，我需要确定每位导演及其国籍，以便进行比较。我可以特意忽略电影类型和票房表现——虽然这些能提供有关电影的背景信息，但与导演的国籍无关。这需要进行并行分解，因为我可以先独立找出每位导演的国籍，然后再对他们进行比较。",
+            "subq1": "1995年电影《Coolie No. 1》的导演的国籍是什么？",
+            "subq2": "电影《The Sensational Trial》的导演的国籍是什么？"
         },
         
         {
-            "question": "When did the director of film Laughter In Hell die?",
-            "structure": "[Core Query: When did person die Known Entities: {Subject: Film, Limitation: titled \"Laughter In Hell\"} Unknown Entities: {Subject: Director identity, Limitation: of film Laughter In Hell}, {Subject: Death date, Limitation: of identified director}, {Subject: Film production details, Limitation: studio, budget}, {Subject: Director's other films, Limitation: filmography}]",
-            "type": "Sequential",
-            "cot": "Let's think step by step. First, I need to assess if decomposition is necessary. The core query is 'When did person die', asking for a death date. The known entity is the film 'Laughter In Hell'. Looking at the unknown entities, I need to identify the director before I can find their death date. I can deliberately IGNORE film production details and the director's other films - while these provide context about the film and director's career, they don't help determine when the director died. This requires sequential decomposition because finding the death date depends on first identifying who directed the film.",
-            "subq1": "Who directed the film Laughter In Hell?",
-            "subq2": "When did [answer_subquestion1] die?"
-        },
-        
-        {
-            "question": "Which film has the director died later, The Gal Who Took the West or Twenty Plus Two?",
-            "structure": "[Core Query: Which film's director died later Known Entities: {Subject: Film A, Limitation: The Gal Who Took the West}, {Subject: Film B, Limitation: Twenty Plus Two} Unknown Entities: {Subject: Director A identity, Limitation: of The Gal Who Took the West}, {Subject: Director B identity, Limitation: of Twenty Plus Two}, {Subject: Death date, Limitation: of Director A}, {Subject: Death date, Limitation: of Director B}, {Subject: Film release dates, Limitation: of both films}, {Subject: Critical reception, Limitation: of both films}]",
-            "type": "Parallel",
-            "cot": "Let's think step by step. First, I need to evaluate if decomposition is necessary. The core query is 'Which film's director died later', comparing death dates. Known entities are the films 'The Gal Who Took the West' and 'Twenty Plus Two'. Looking at the unknown entities, I need to identify each director and their death dates to determine who died later. I can deliberately IGNORE film release dates and critical reception - while these provide context about the films, they don't help determine when the directors died. This requires parallel decomposition to independently find when each director died before comparing the dates.",
-            "subq1": "When did the director of The Gal Who Took the West die?",
-            "subq2": "When did the director of Twenty Plus Two die?"
-        },
-        
-        {
-            "question": "Who is the grandchild of Krishna Shah (Nepalese Royal)?",
-            "structure": "[Core Query: Who is person's grandchild Known Entities: {Subject: Krishna Shah, Limitation: Nepalese Royal} Unknown Entities: {Subject: Child identity, Limitation: of Krishna Shah}, {Subject: Grandchild identity, Limitation: child of Krishna Shah's child}, {Subject: Royal lineage, Limitation: historical significance}, {Subject: Reign dates, Limitation: period of authority}]",
-            "type": "Sequential",
-            "cot": "Let's think step by step. First, I need to determine if decomposition is necessary. The core query is 'Who is person's grandchild'. The known entity is 'Krishna Shah'. Looking at the unknown entities, I need to identify Shah's children first, then their children (Shah's grandchildren). I can deliberately IGNORE royal lineage and reign dates - while these provide historical context about Shah's position, they don't help identify specific family relationships. This requires sequential decomposition because identifying grandchildren depends on first identifying children.",
-            "subq1": "Who is the child of Krishna Shah (Nepalese Royal)?",
-            "subq2": "Who is the child of [answer_subquestion1]?"
-        },
-        
-        {
-            "question": "What is the official currency of Brazil?",
-            "structure": "[Core Query: What is the official currency Known Entities: {Subject: Brazil, Limitation: country} Unknown Entities: {Subject: Currency, Limitation: official for Brazil}, {Subject: Currency history, Limitation: previous currencies of Brazil}, {Subject: Exchange rate, Limitation: value relative to USD}, {Subject: Economic indicators, Limitation: inflation, GDP}]",
+            "question": "巴西的官方货币是什么？",
+            "structure": "[Core Query: What is the official currency Known Entities: {Subject: 巴西, Limitation: 城市} Unknown Entities: {Subject: 货币, Limitation: 巴西官方}, {Subject: 货币史, Limitation: 巴西以前的货币}, {Subject: 汇率, Limitation: 相对于美元的价值}, {Subject: 经济指标, Limitation: 通货膨胀，国内生产总值}]",
             "type": "None",
-            "cot": "Let's think step by step. First, I need to evaluate if decomposition is truly necessary. The core query is 'What is the official currency'. The known entity is 'Brazil'. Looking at the unknown entities, I only need to identify Brazil's current official currency. I can deliberately IGNORE currency history, exchange rates, and economic indicators - while they provide context about Brazil's economy, they don't help identify what the current official currency is. This is a straightforward factual question that can be answered in one step without decomposition.",
-            "subq1": "What is the official currency of Brazil?",
+            "cot": "Let's think step by step\n 首先，我需要评估是否真的有必要进行分解。核心问题是“官方货币是什么”。已知的实体是“巴西”。查看未知实体，我只需要确定巴西当前的官方货币。我可以刻意忽略货币历史、汇率和经济指标——虽然它们能提供有关巴西经济的背景信息，但对确定当前的官方货币没有帮助。这是一个简单的事实性问题，一步就能回答，无需分解。",
+            "subq1": "巴西的官方货币是什么？",
             "subq2": ""
         },
         
         {
-            "question": "What city, where the creator of 'The Scream' spent most of his childhood, is now considered a major cultural center?",
-            "structure": "[Core Query: What city is a cultural center Known Entities: {Subject: Artwork, Limitation: 'The Scream'} Unknown Entities: {Subject: Creator identity, Limitation: of 'The Scream'}, {Subject: Childhood city, Limitation: where identified creator spent most childhood}, {Subject: Cultural status, Limitation: of identified city in present day}, {Subject: Artist's technique, Limitation: painting style}, {Subject: Museum location, Limitation: where artwork is displayed}]",
+            "question": "哪位作曲家的歌剧首演年份与法国大革命爆发年份相同？这位作曲家死于哪个世纪？",
+            "structure": "[Core Query: In which century did person die Known Entities: {Subject: 法国大革命, Limitation: 有具体起始年份的历史事件} Unknown Entities: {Subject: 作曲家身份, Limitation: 谁的歌剧首演年份与法国大革命开始的年份相同}, {Subject: 死亡世纪, Limitation: 已确认的作曲家的}, {Subject: 歌剧详情, Limitation: 标题和音乐风格}, {Subject: 作曲家的国籍, Limitation: 原产国}]",
             "type": "Sequential",
-            "cot": "Let's think step by step. First, I need to determine if decomposition is necessary. The core query is 'What city is a cultural center'. The known entity is 'The Scream'. Looking at the unknown entities, I need to identify the creator of 'The Scream', then determine where they spent most of their childhood. I can deliberately IGNORE the artist's technique and museum location - while these provide context about the artwork, they don't help identify the childhood city. This requires sequential decomposition because identifying the city depends on first identifying the artist.",
-            "subq1": "Who created 'The Scream'?",
-            "subq2": "In which city did [answer_subquestion1] spend most of his childhood?"
+            "cot": "Let's think step by step\n 首先，我需要评估是否有必要进行分解。核心问题是“这个人死于哪个世纪”。已知的实体是“法国大革命”。查看未知实体，我需要确定哪位作曲家的歌剧首演恰逢法国大革命开始，然后确定他们死于哪个世纪。我可以刻意忽略歌剧的细节和作曲家的国籍——虽然这些信息提供了关于作曲家的背景，但对确定他们的死亡时间没有帮助。这需要按顺序进行分解，因为要确定死亡的世纪，首先得确定具体的作曲家。",
+            "subq1": "哪位作曲家的歌剧首演年份与法国大革命开始的年份相同？",
+            "subq2": "[answer_subquestion1]死于哪个世纪？"
         },
         
         {
-            "question": "In which century did the composer, whose opera premiered in the same year as the French Revolution began, die?",
-            "structure": "[Core Query: In which century did person die Known Entities: {Subject: French Revolution, Limitation: historical event with specific beginning year} Unknown Entities: {Subject: Composer identity, Limitation: whose opera premiered same year as French Revolution began}, {Subject: Death century, Limitation: of identified composer}, {Subject: Opera details, Limitation: title and musical style}, {Subject: Composer's nationality, Limitation: country of origin}]",
+            "question": "这座地标性建筑由设计了著名玻璃金字塔的建筑师设计，它是在哪一年完工的？",
+            "structure": "[Core Query: In what year was building completed Known Entities: {Subject:玻璃金字塔, Limitation: 著名的建筑作品} Unknown Entities: {Subject: 建筑师身份, Limitation: 建造了玻璃金字塔}, {Subject:标志性建筑, Limitation: 由知名建筑师设计}, {Subject: 完成年份, Limitation: 已识别的标志性建筑的}, {Subject: 建筑风格, Limitation: 两种结构的}, {Subject: 建筑材料, Limitation: 在两种结构中都有使用}]",
             "type": "Sequential",
-            "cot": "Let's think step by step. First, I need to evaluate if decomposition is necessary. The core query is 'In which century did person die'. The known entity is the 'French Revolution'. Looking at the unknown entities, I need to identify which composer had an opera premiere coinciding with the start of the French Revolution, then determine in which century they died. I can deliberately IGNORE opera details and composer's nationality - while these provide context about the composer, they don't help determine when they died. This requires sequential decomposition because finding the death century depends on first identifying the specific composer.",
-            "subq1": "Which composer's opera premiered in the same year as the French Revolution began?",
-            "subq2": "In which century did [answer_subquestion1] die?"
+            "cot": "Let's think step by step\n 首先，我需要确定是否有必要进行分解。核心查询是“这座建筑是哪一年完工的”。已知实体是“玻璃金字塔”。查看未知实体，我需要确定设计玻璃金字塔的建筑师，然后找到他们的标志性建筑，最后确定该建筑的完工年份。我可以刻意忽略建筑风格和建筑材料——虽然这些能提供有关建筑的有趣背景信息，但对确定完工年份没有帮助。由于确定建筑师、建筑以及其完工年份之间存在依赖关系，这需要进行顺序分解。",
+            "subq1": "哪位建筑师设计了著名的玻璃金字塔？",
+            "subq2": "由[answer_subquestion1]设计的这座标志性建筑是在哪一年完工的？"
         },
         
         {
-            "question": "Which language, spoken by the indigenous people who first inhabited the region where Silicon Valley is now located, has fewer native speakers today?",
-            "structure": "[Core Query: Which language has fewer speakers Known Entities: {Subject: Silicon Valley, Limitation: geographic region with specific indigenous history} Unknown Entities: {Subject: Indigenous languages, Limitation: spoken by first inhabitants of Silicon Valley region}, {Subject: Speaker counts, Limitation: current number of native speakers for each identified language}, {Subject: Cultural traditions, Limitation: of indigenous groups}, {Subject: Historical territories, Limitation: exact boundaries of indigenous lands}]",
-            "type": "Sequential",
-            "cot": "Let's think step by step. First, I need to determine if decomposition is necessary. The core query is 'Which language has fewer speakers'. The known entity is 'Silicon Valley'. Looking at the unknown entities, I first need to identify which indigenous languages were spoken in the Silicon Valley region, then compare their current speaker counts to determine which has fewer. I can deliberately IGNORE cultural traditions and historical territories - while these provide important context about the indigenous peoples, they don't help determine current speaker counts. This requires sequential decomposition because comparing speaker counts depends on first identifying the relevant languages.",
-            "subq1": "What indigenous languages were spoken by the people who first inhabited the region where Silicon Valley is now located?",
-            "subq2": "Which of [answer_subquestion1] has the fewest native speakers today?"
-        },
-        
-        {
-            "question": "Did the mathematician whose theorem is fundamental to modern calculus die before or after the astronomer who first proposed the heliocentric model?",
-            "structure": "[Core Query: Did person A die before or after person B Known Entities: {Subject: Calculus theorem, Limitation: fundamental to modern calculus}, {Subject: Heliocentric model, Limitation: astronomical theory} Unknown Entities: {Subject: Mathematician identity, Limitation: created fundamental calculus theorem}, {Subject: Astronomer identity, Limitation: first proposed heliocentric model}, {Subject: Death date, Limitation: of identified mathematician}, {Subject: Death date, Limitation: of identified astronomer}, {Subject: Publications, Limitation: major works of both scientists}, {Subject: Academic positions, Limitation: institutions where they worked}]",
-            "type": "Parallel",
-            "cot": "Let's think step by step. First, I need to evaluate if decomposition is necessary. The core query is 'Did person A die before or after person B', comparing death dates. Known entities are 'calculus theorem' and 'heliocentric model'. Looking at the unknown entities, I need to identify both the mathematician and astronomer, then determine their death dates to make the comparison. I can deliberately IGNORE publications and academic positions - while these provide context about their careers, they don't help determine when they died. This requires parallel decomposition because I can find each death date independently before comparing them.",
-            "subq1": "When did the mathematician whose theorem is fundamental to modern calculus die?",
-            "subq2": "When did the astronomer who first proposed the heliocentric model die?"
-        },
-        
-        {
-            "question": "Which painting, created by an artist who studied under the same teacher as Leonardo da Vinci, is currently housed in the Louvre Museum?",
-            "structure": "[Core Query: Which painting is in the Louvre Known Entities: {Subject: Leonardo da Vinci, Limitation: famous artist}, {Subject: Louvre Museum, Limitation: art institution} Unknown Entities: {Subject: Teacher, Limitation: of da Vinci}, {Subject: Other students, Limitation: studied under same teacher as da Vinci}, {Subject: Paintings, Limitation: created by identified students and housed in Louvre}, {Subject: Artistic techniques, Limitation: used by the artists}, {Subject: Historical period, Limitation: when artists were active}]",
-            "type": "Sequential",
-            "cot": "Let's think step by step. First, I need to determine if decomposition is necessary. The core query is 'Which painting is in the Louvre'. Known entities are 'Leonardo da Vinci' and 'Louvre Museum'. Looking at the unknown entities, I need to identify da Vinci's teacher, then other students of this teacher, then paintings by these artists in the Louvre. I can deliberately IGNORE artistic techniques and historical periods - while these provide context about the artists, they don't help identify which paintings are in the Louvre. This requires sequential decomposition because finding the paintings depends on first identifying the relevant artists.",
-            "subq1": "Which artists studied under the same teacher as Leonardo da Vinci?",
-            "subq2": "Which paintings created by [answer_subquestion1] are housed in the Louvre Museum?"
-        },
-        
-        {
-            "question": "What is the capital of the country where the inventor of the telephone spent his final years?",
-            "structure": "[Core Query: What is the capital of country Known Entities: {Subject: Telephone, Limitation: invention} Unknown Entities: {Subject: Inventor identity, Limitation: of telephone}, {Subject: Country, Limitation: where identified inventor spent final years}, {Subject: Capital, Limitation: of identified country}, {Subject: Invention date, Limitation: when telephone was created}, {Subject: Other inventions, Limitation: by same inventor}]",
-            "type": "Sequential",
-            "cot": "Let's think step by step. First, I need to assess if decomposition is necessary. The core query is 'What is the capital of country'. The known entity is 'telephone'. Looking at the unknown entities, I need to identify the telephone inventor, then determine where they spent their final years, and finally identify that country's capital. I can deliberately IGNORE the invention date and other inventions - while these provide context about the inventor's achievements, they don't help identify where they spent their final years or that country's capital. This requires sequential decomposition because each step depends on the previous one.",
-            "subq1": "In which country did the inventor of the telephone spend his final years?",
-            "subq2": "What is the capital of [answer_subquestion1]?"
-        },
-        
-        {
-            "question": "Which musical instrument, played by the composer who wrote the most famous requiem while on his deathbed, was his primary instrument?",
-            "structure": "[Core Query: Which instrument was primary Known Entities: {Subject: Requiem, Limitation: most famous, written on deathbed} Unknown Entities: {Subject: Composer identity, Limitation: wrote famous requiem on deathbed}, {Subject: Primary instrument, Limitation: of identified composer}, {Subject: Other compositions, Limitation: by same composer}, {Subject: Musical era, Limitation: period when composer was active}]",
-            "type": "Sequential",
-            "cot": "Let's think step by step. First, I need to evaluate if decomposition is necessary. The core query is 'Which instrument was primary'. The known entity is the 'famous requiem written on deathbed'. Looking at the unknown entities, I need to identify the composer who wrote this requiem, then determine their primary instrument. I can deliberately IGNORE other compositions and musical era - while these provide context about the composer's work and time period, they don't help identify their primary instrument. This requires sequential decomposition because identifying the instrument depends on first identifying the composer.",
-            "subq1": "Which composer wrote the most famous requiem while on his deathbed?",
-            "subq2": "What was [answer_subquestion1]'s primary musical instrument?"
-        },
-        
-        {
-            "question": "From which university did the physicist, whose equation unifies electricity and magnetism into a single theory, graduate?",
-            "structure": "[Core Query: From which university did person graduate Known Entities: {Subject: Equation, Limitation: unifies electricity and magnetism} Unknown Entities: {Subject: Physicist identity, Limitation: created unifying equation}, {Subject: University, Limitation: where identified physicist graduated}, {Subject: Year of graduation, Limitation: when physicist completed studies}, {Subject: Other scientific contributions, Limitation: additional work by physicist}]",
-            "type": "Sequential",
-            "cot": "Let's think step by step. First, I need to determine if decomposition is necessary. The core query is 'From which university did person graduate'. The known entity is 'equation about electricity and magnetism'. Looking at the unknown entities, I need to first identify which physicist created this unifying equation, then determine their alma mater. I can deliberately IGNORE graduation year and other scientific contributions - while these provide context about the physicist's education and career, they don't help identify which university they attended. This requires sequential decomposition because finding the university depends on first identifying the physicist.",
-            "subq1": "Which physicist's equation unifies electricity and magnetism into a single theory?",
-            "subq2": "From which university did [answer_subquestion1] graduate?"
-        },
-        
-        {
-            "question": "Which disease, that caused the death of the author whose novel depicted a young orphan in Victorian England, was most prevalent in European cities of that era?",
-            "structure": "[Core Query: Which disease was most prevalent Known Entities: {Subject: Victorian England, Limitation: historical period}, {Subject: Novel theme, Limitation: young orphan} Unknown Entities: {Subject: Author identity, Limitation: wrote novel about orphan in Victorian England}, {Subject: Disease, Limitation: caused identified author's death and prevalent in European cities of that era}, {Subject: Author's other works, Limitation: bibliography}, {Subject: Medical treatments, Limitation: available in Victorian era}]",
-            "type": "Sequential",
-            "cot": "Let's think step by step. First, I need to assess if decomposition is necessary. The core query is 'Which disease was most prevalent'. Known entities are 'Victorian England' and 'novel about orphan'. Looking at the unknown entities, I need to identify the author of novels about orphans in Victorian England, then determine what disease caused their death and was also prevalent in that era. I can deliberately IGNORE the author's other works and medical treatments - while these provide historical context, they don't help identify the specific disease that caused the author's death. This requires sequential decomposition because identifying the disease depends on first identifying the author.",
-            "subq1": "Which author wrote a novel depicting a young orphan in Victorian England?",
-            "subq2": "What disease, that caused the death of [answer_subquestion1], was most prevalent in European cities of the Victorian era?"
-        },
-        
-        {
-            "question": "In what year was the landmark building, designed by the architect who also created the famous glass pyramid, completed?",
-            "structure": "[Core Query: In what year was building completed Known Entities: {Subject: Glass pyramid, Limitation: famous architectural work} Unknown Entities: {Subject: Architect identity, Limitation: created the glass pyramid}, {Subject: Landmark building, Limitation: designed by identified architect}, {Subject: Completion year, Limitation: of identified landmark building}, {Subject: Architectural style, Limitation: of both structures}, {Subject: Construction materials, Limitation: used in both structures}]",
-            "type": "Sequential",
-            "cot": "Let's think step by step. First, I need to determine if decomposition is necessary. The core query is 'In what year was building completed'. The known entity is 'glass pyramid'. Looking at the unknown entities, I need to identify the architect who created the glass pyramid, then their landmark building, and finally its completion year. I can deliberately IGNORE architectural style and construction materials - while these provide interesting context about the structures, they don't help identify the completion year. This requires sequential decomposition due to the dependencies between identifying the architect, the building, and then its completion year.",
-            "subq1": "Which architect created the famous glass pyramid?",
-            "subq2": "In what year was the landmark building designed by [answer_subquestion1] completed?"
-        },
-
-        
-        {
-            "question": "Are both Sagrada Familia and Notre-Dame Cathedral designated as UNESCO World Heritage sites?",
-            "structure": "[Core Query: Are both designated as UNESCO World Heritage sites Known Entities: {Subject: Sagrada Familia, Limitation: architectural landmark}, {Subject: Notre-Dame Cathedral, Limitation: architectural landmark} Unknown Entities: {Subject: UNESCO status, Limitation: of Sagrada Familia}, {Subject: UNESCO status, Limitation: of Notre-Dame Cathedral}, {Subject: Construction history, Limitation: of both buildings}, {Subject: Architectural styles, Limitation: of both buildings}]",
-            "type": "Parallel",
-            "cot": "Let's think step by step. First, I need to evaluate if decomposition is necessary. The core query is 'Are both designated as UNESCO World Heritage sites', a status comparison. Known entities are 'Sagrada Familia' and 'Notre-Dame Cathedral'. Looking at the unknown entities, I need to determine the UNESCO World Heritage status of each site. I can deliberately IGNORE construction history and architectural styles - while these provide context about the buildings, they don't help determine their UNESCO status. This requires parallel decomposition to check each status independently before comparing them.",
-            "subq1": "Is Sagrada Familia designated as a UNESCO World Heritage site?",
-            "subq2": "Is Notre-Dame Cathedral designated as a UNESCO World Heritage site?"
-        },
-        
-        {
-            "question": "Who was the first female astronaut to travel to space?",
-            "structure": "[Core Query: Who was the first female astronaut Known Entities: {Subject: Space travel, Limitation: accomplished by females} Unknown Entities: {Subject: Astronaut identity, Limitation: female, first to travel to space}, {Subject: Launch date, Limitation: of first female space mission}, {Subject: Spacecraft, Limitation: used for first female space mission}, {Subject: Mission duration, Limitation: length of first female space flight}]",
+            "question": "谁是第一个进入太空的女性宇航员？",
+            "structure": "[Core Query: Who was the first female astronaut Known Entities: {Subject: 太空旅行, Limitation: 由女性完成} Unknown Entities: {Subject: 宇航员身份, Limitation: 女性，首位进入太空的人}, {Subject: 发布日期, Limitation:首次女性太空任务的}, {Subject: 航天器, Limitation: 用于首次女性太空任务}, {Subject: 任务持续时间, Limitation: 首次女性太空飞行的时长}]",
             "type": "None",
-            "cot": "Let's think step by step. First, I need to evaluate if decomposition is truly necessary. The core query is 'Who was the first female astronaut'. The known entity is 'space travel'. Looking at the unknown entities, I only need to identify which female was the first to travel to space. I can deliberately IGNORE launch date, spacecraft, and mission duration - while these provide interesting context about the historic mission, they don't help identify who the first female astronaut was. This is a straightforward factual question answerable in one step without decomposition.",
-            "subq1": "Who was the first female astronaut to travel to space?",
+            "cot": "Let's think step by step\n 首先，我需要评估是否真的有必要进行分解。核心问题是“谁是第一位女宇航员”。已知的实体是“太空旅行”。查看未知实体，我只需要确定哪位女性是第一位进入太空的人。我可以特意忽略发射日期、航天器和任务持续时间——虽然这些信息提供了关于这一历史性任务的有趣背景，但它们对确定谁是第一位女宇航员没有帮助。这是一个简单的事实性问题，无需分解，一步就能回答。",
+            "subq1": "谁是第一个进入太空的女性宇航员？",
             "subq2": ""
         },
         
-
         {
-            "question": "When did the CEO of Tesla also become the owner of the social media platform previously known as Twitter?",
-            "structure": "[Core Query: When became owner Known Entities: {Subject: CEO of Tesla, Limitation: person with specific role}, {Subject: Social media platform, Limitation: previously known as Twitter} Unknown Entities: {Subject: Acquisition date, Limitation: when CEO became owner of platform}, {Subject: Purchase price, Limitation: amount paid for acquisition}, {Subject: Platform changes, Limitation: modifications after acquisition}]",
+            "question": "当特斯拉的CEO也成为此前名为Twitter的社交媒体平台的所有者时，那是在什么时候？",
+            "structure": "[Core Query: When became owner Known Entities: {Subject: 特斯拉CEO, Limitation: 具有特定角色的人}, {Subject: 社交媒体平台, Limitation: 以前称为推特} Unknown Entities: {Subject: 收购日期, Limitation: 当CEO成为平台所有者时}, {Subject: 购买价格, Limitation: 收购支付金额}, {Subject: 平台变更, Limitation: 收购后的修改}]",
             "type": "None",
-            "cot": "Let's think step by step. First, I need to evaluate if decomposition is truly necessary. The core query is 'When became owner', seeking a date. Known entities are 'CEO of Tesla' and 'social media platform previously known as Twitter'. Looking at the unknown entities, I only need the acquisition date to answer when the ownership changed. I can deliberately IGNORE purchase price and platform changes - while these provide context about the acquisition and its aftermath, they don't help determine when the ownership transfer occurred. This is a straightforward factual question answerable in one step without decomposition.",
-            "subq1": "When did the CEO of Tesla also become the owner of the social media platform previously known as Twitter?",
+            "cot": "Let's think step by step\n 首先，我需要评估是否真的有必要进行分解。核心问题是“当特斯拉CEO成为Twitter平台的所有者时，那是在什么时候？”。已知实体是“特斯拉CEO”和“此前名为Twitter的社交媒体平台”。查看未知实体，我只需要确定收购日期以回答所有权变更的时间。我可以刻意忽略购买价格和平台变更——虽然这些信息提供了关于收购及其后续影响的背景，但它们对确定所有权转移时间没有帮助。这是一个简单的事实性问题，无需分解，一步就能回答。",
+            "subq1": "当特斯拉的CEO也成为此前名为Twitter的社交媒体平台的所有者时，那是在什么时候？",
             "subq2": ""
         },
         
@@ -905,20 +640,20 @@ def find_similar_examples(question, examples, num_examples=3):
 
 #---------------------------------------------------- Prompt Construction -----------------------------------------------
 def construct_prompt(question, examples, structure):
-    prompt = """I want you to analyze questions and break them down into subproblems.
-I'll provide the question and its structure analysis (Core Query, Known Entities, Limiting Conditions, and Unknown Entities).
-Please analyze the question structure and determine how to decompose it. Follow this format:
+    prompt = """我希望你能对问题进行分析，并将它们分解成子问题。
+我会提供问题及其结构分析。 (Core Query, Known Entities, Limiting Conditions, and Unknown Entities).
+请分析问题结构并确定如何对其进行分解。请遵循以下格式：
 
     Question: [The original question]
 
 Structure: [Analysis of core query, known entities, limiting conditions, and unknown entities]
 
 CoT: Let's think step by step
-[Detailed step-by-step reasoning examining the question structure]
-[Analyze the core query, known entities, and limiting conditions]
-[Evaluate which unknown entities are crucial for answering the question]
-[Decide if decomposition is needed and what strategy to use]
-[Ensure key limiting conditions are preserved in subquestions]
+[对问题结构进行详细的分步推理分析]
+[分析核心查询、已知实体和限制条件]
+[评估哪些未知实体对于回答该问题至关重要]
+[判断是否需要分解以及应采用何种策略]
+[确保子问题中保留关键的限制条件]
 
 So the Type is: [Parallel, Sequential, or None]
 
@@ -926,38 +661,36 @@ So the Subquestion 1 is: [First subquestion; if type is None, should be identica
 
 So the Subquestion 2 is: [Second subquestion; if Sequential, MUST include [answer_subquestion1]; if Parallel, MUST NOT reference subquestion 1; if None, leave empty]
 
-**MANDATORY REQUIREMENTS:**
+**强制性要求：**
 
-1. **DECOMPOSITION RULE**: Only break down into two subquestions when necessary.
+1. **DECOMPOSITION RULE**: 仅在必要时将其分解为两个子问题.
 
-2. **SIMPLICITY EVALUATION**: Questions answerable in one step should be classified as "None" type.
+2. **SIMPLICITY EVALUATION**: 一步即可回答的问题应归类为 "None" 类型.
 
-3. **SUBQUESTION CLARITY**: Each subquestion must yield a specific, factual, and unambiguous answer.
+3. **SUBQUESTION CLARITY**: 每个子问题都必须得出一个具体、真实且明确的答案。
 
-4. **NONE TYPE FORMATTING**: Subquestion 1 must match original question, Subquestion 2 must be empty.
+4. **NONE TYPE FORMATTING**: Subquestion 1 必须与原始问题匹配， Subquestion 2必须为空。
 
-5. **SEQUENTIAL REQUIREMENTS**: Subquestion 2 must contain [answer_subquestion1] placeholder and form a complete logical chain.
+5. **SEQUENTIAL REQUIREMENTS**: Subquestion 2 必须包含 [answer_subquestion1] 占位符并形成一个完整的逻辑链。
 
-6. **PARALLEL REQUIREMENTS**: Both subquestions must be independent and together solve the original question.
+6. **PARALLEL REQUIREMENTS**: 这两个子问题必须相互独立，且合起来能解决原问题。
 
-7. **PRECISION**: Subquestions must include sufficient context to be answerable without clarification.
+7. **PRECISION**: 子问题必须包含足够的上下文，以便无需澄清就能得到解答。
 
-8. **TERMINOLOGY CONSISTENCY**: Always use "subquestion" consistently.
+8. **TERMINOLOGY CONSISTENCY**: 始终统一使用 "subquestion"。
 
-9. **ENTITY FOCUS**: Only include entities directly contributing to answering the core query.
+9. **ENTITY FOCUS**: 只包含直接有助于回答核心查询的实体。
 
-10. **CONSISTENCY**: Your reasoning must align with your final decomposition.
+10. **CONSISTENCY**: 你的推理必须与你最终的分解一致。
 
-11. **MEANINGFUL DECOMPOSITION**: Avoid trivial definitional subquestions.
+11. **MEANINGFUL DECOMPOSITION**: 避免无关紧要的定义性子问题。
 
-12. **SUBSTANTIVE CONTRIBUTION**: Each subquestion must provide information that advances the solution.
+12. **SUBSTANTIVE CONTRIBUTION**: 每个子问题都必须提供有助于推进解决方案的信息。
 
-13. **PRESERVING JOINT LIMITING CONDITIONS**: When multiple limiting conditions together define a single entity, they MUST be kept together and NEVER split across subquestions. Words like "both," "same," "together," "jointly," and similar terms signal that limiting conditions should be preserved as a unit. Questions like "Who invented both X and Y" or "Who is known for both A and B" should NOT be decomposed into parallel questions about separate entities.
+13. **PRESERVING JOINT LIMITING CONDITIONS**: 当多个限制条件共同定义一个单一实体时，这些条件必须放在一起，绝不能拆分到子问题中。像“两者都”“相同”“一起”“共同”以及类似的词汇表明，限制性条件应作为一个整体保留。 像“谁既发明了X又发明了Y”或“谁因A和B而闻名”这类问题，不应该被分解成关于独立实体的平行问题。
+14. **DECOMPOSITION VALIDATION**:在最终确定之前，务必验证你的分解的正确性和完整性。
 
-14. **DECOMPOSITION VALIDATION**: Always verify the correctness and completeness of your decomposition before finalizing.
-
-
-Here are some examples:
+以下是一些例子：
 """
     for ex in examples:
         prompt += f"""
@@ -974,7 +707,7 @@ So the Subquestion 1 is: {ex["subq1"]}"""
             prompt += f"\nSo the Subquestion 2 is: {ex['subq2']}"
         prompt += "\n"
     prompt += f"""
-### **Now, analyze the following question:**
+### **现在，分析下面这个问题：**
     Question: {question}
 
 Structure: {structure}
@@ -986,33 +719,33 @@ CoT: Let's think step by step
 #---------------------------------------------------- API Client -----------------------------------------------
 def generate_responses(prompt, api_url=None, max_tokens=800, temperature=0, top_p=1.0, frequency_penalty=0.0, presence_penalty=0.0):
     """Using OpenAI client instead of original API call"""
-    system_message = """You are an expert at analyzing questions and breaking them down into simpler subquestions.
-You carefully distinguish between sequential questions (where the second subquestion depends on the answer to the first),
-parallel questions (where both subquestions can be answered independently), and None-type questions (which are already simple).
+    system_message = """你是一位擅长分析问题并将其分解为更简单子问题的专家。
+你仔细区分了顺序性问题（其中第二个子问题取决于第一个子问题的答案），
+并行问题（其中两个子问题都可以独立回答），以及 None-type 问题（这些问题已经很简单了）。
 
-**CRITICAL REQUIREMENTS YOU MUST ENFORCE:**
+**您必须执行的关键要求：**
 
-1. **DECOMPOSITION NECESSITY**: Only decompose a question when absolutely necessary. If a question can be answered directly, mark it as "None" type.
+1. **DECOMPOSITION NECESSITY**: 只有在绝对必要时才拆解问题。如果一个问题可以直接回答，就将其标记为 "None" 类型。
 
-2. **SEQUENTIAL DECOMPOSITION CORRECTNESS**: For sequential types, VERIFY that substituting the answer from Subquestion 1 into Subquestion 2 directly yields the full answer to the original question. This is THE MOST IMPORTANT test of a valid sequential decomposition.
+2. **SEQUENTIAL DECOMPOSITION CORRECTNESS**: 对于序列类型，验证将 Subquestion 1 的答案直接代入 Subquestion 2 是否能得出原始问题的完整答案。这是对有效顺序分解的最重要测试。
 
-3. **NO TRIVIAL SUBQUESTIONS**: NEVER create basic definition questions like "Who/What is X?" unless absolutely necessary for intermediate reasoning AND not common knowledge.
+3. **NO TRIVIAL SUBQUESTIONS**: 绝不要创建诸如“X是谁/是什么？”这类基础性的定义问题。 除非对于中间推理来说绝对必要，并且不属于常识。
 
-4. **LOGICAL PATHWAY**: Ensure there is a clear, direct logical connection between subquestions and the original question. Every step must advance toward the final answer.
+4. **LOGICAL PATHWAY**: 确保子问题与原始问题之间存在清晰、直接的逻辑联系。每一步都必须朝着最终答案推进。
 
-5. **ALIGNMENT BETWEEN COT AND DECOMPOSITION**: Your step-by-step reasoning must perfectly align with your final decomposition choice and subquestion formulation.
+5. **ALIGNMENT BETWEEN COT AND DECOMPOSITION**: 你的 step-by-step 推理 必须与你最终的分解选择和子问题表述完全一致。
 
-6. **VALIDATION CHECK**: Before finalizing, mentally substitute expected answers to verify your decomposition structure works.
+6. **VALIDATION CHECK**: 在最终确定之前，务必在脑海中代入预期答案，验证你的分解结构是否有效。
 
-7. **FOCUS ON DIRECT ANSWERABLE QUESTIONS**: Every subquestion must yield a specific, factual answer that directly contributes to solving the original question.
+7. **FOCUS ON DIRECT ANSWERABLE QUESTIONS**: 每个子问题都必须产生一个具体、真实的答案，直接有助于解决原始问题。
 
-8. **PRESERVING JOINT LIMITING CONDITIONS**: It is ABSOLUTELY CRITICAL to never split multiple limiting conditions that together define a single entity. When a question asks about "both X and Y," "same," "together," "jointly," or similar terms indicating multiple attributes of ONE entity, DO NOT decompose these into separate questions. For example:
+8. **PRESERVING JOINT LIMITING CONDITIONS**: 绝不能拆分共同定义一个单一实体的多个限制条件，这一点至关重要。 当问题中出现“X和Y两者”“相同”“一起”“共同”或其他类似表示单一实体具有多种属性的术语时，请勿将其拆分为单独的问题。例如：
 
-   - "Who invented  X and Y?" should NOT be split into "Who invented X?" and "Who invented Y?"
-   - "Which country has both characteristic A and B?" must stay as a single question
-   - "What is known for simultaneously doing X and Y?" must be kept intact
+   - “谁发明了X和Y？”不应该拆分成“谁发明了X？”和“谁发明了Y？”
+   - “哪个国家同时具有特征A和特征B？”必须作为一个单独的问题保留
+   - “‘什么以同时做X和Y而闻名？’必须保持原样”
 
-   This requirement takes precedence over other decomposition considerations. When multiple conditions jointly define what we're looking for, they MUST be preserved together in any subquestion. Failing to maintain these joint conditions completely invalidates the decomposition.
+   此要求优先于其他分解考量。当多个条件共同定义我们要寻找的内容时，在任何子问题中都必须将它们一并保留。未能维持这些联合条件会使分解完全失效。
 """.strip()
 
     messages = [
@@ -1114,7 +847,7 @@ Below are some examples to guide you:\n\n"""
     prompt += f"Question: {current_question}\n"
     prompt += "Subquestions:\n"
     for sub_q, sub_a in current_sub_questions:
-        prompt += f"{sub_q}: {sub_a}\n"
+        prompt += f"{sub_q}: {sub_a}\n" 
     prompt += """
 CoT: 
 """
@@ -1254,7 +987,7 @@ def build_question_tree(question, api_url=None, max_tokens=800, temperature=0.2,
                 leaf_node.depends_on = parent.left.id if parent.left else None
                 leaf_node.display_question = leaf_node.question.replace("[answer_subquestion1]", f"[answer from {leaf_node.depends_on}]")
 
-        elif parent and "[answer from" in leaf_node.question:
+        elif parent and "[answer from" in leaf_node.question: 
             match = re.search(r'\[answer from (.*?)\]', leaf_node.question)
             if match:
                 leaf_node.depends_on = match.group(1)
@@ -1988,8 +1721,10 @@ def main():
     Main function that directly calls the question decomposition and answering functionality
     """
     # Set your question here or get user input at runtime
+
+    # Who is the son of the Italian navigator who explored the eastern coast of the continent Ulises Solís' birthplace is located in for England?
     question = """
-Who is the son of the Italian navigator who explored the eastern coast of the continent Ulises Solís' birthplace is located in for England?
+    为英国探索了尤利西斯·索利斯出生地所在大陆东海岸的那位意大利航海家，他的儿子是谁？
     """
     
     # Set maximum tree height

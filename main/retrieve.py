@@ -12,21 +12,20 @@ import requests
 from openai import OpenAI
 import argparse
 import faiss
-import torch
+# import torch
 from config import BASE_URL,API_KEY,RANKER_URL,RANKER_KEY,RETRIEVE_TEMPERATURE,SAMPLING_ITERATIONS,EMBEDDING_DATA
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-global_tokenizer = AutoTokenizer.from_pretrained('BAAI/bge-reranker-base')
-global_model = AutoModelForSequenceClassification.from_pretrained('BAAI/bge-reranker-base').to(device)
-global_model.eval()
+# from transformers import AutoModelForSequenceClassification, AutoTokenizer
+# global_tokenizer = AutoTokenizer.from_pretrained('BAAI/bge-reranker-base')
+# global_model = AutoModelForSequenceClassification.from_pretrained('BAAI/bge-reranker-base').to(device)
+# global_model.eval()
 
 client = OpenAI(base_url=BASE_URL, api_key=API_KEY)
-try:
-    nlp = spacy.load("en_core_web_sm")
-except:
-    import subprocess
-    subprocess.call(["python", "-m", "spacy", "download", "en_core_web_sm"])
-    nlp = spacy.load("en_core_web_sm")
+# try:
+#     nlp = spacy.load("en_core_web_sm")
+# except:
+#     import subprocess
+#     subprocess.call(["python", "-m", "spacy", "download", "en_core_web_sm"])
+#     nlp = spacy.load("en_core_web_sm")
 
 
 def generate_response(messages, max_tokens=2000, temperature=0, top_p=1.0, top_k=None, frequency_penalty=0.0, presence_penalty=0.0):
@@ -54,45 +53,45 @@ def generate_response(messages, max_tokens=2000, temperature=0, top_p=1.0, top_k
         return None
 
 # Extract keywords function
-def extract_keywords(question: str) -> str:
-    doc = nlp(question)
-    keywords_with_positions = []
-    matched_spans = set()
+def  extract_keywords(question: str) -> str:
+    # doc = nlp(question)
+    # keywords_with_positions = []
+    # matched_spans = set()
 
-    name_patterns = [
-        re.compile(r'\b[A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b'),
-        re.compile(r'\b[A-Z][a-z]+(?:-[A-Z]?[a-z]+)?\b'),
-    ]
+    # name_patterns = [
+    #     re.compile(r'\b[A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b'),
+    #     re.compile(r'\b[A-Z][a-z]+(?:-[A-Z]?[a-z]+)?\b'),
+    # ]
     
-    for ent in doc.ents:
-        ent_text = ent.text
-        ent_start = question.find(ent_text)
-        if ent_start != -1:
-            matched_spans.add((ent_start, ent_start + len(ent_text)))
-            keywords_with_positions.append((ent_text, ent_start))
+    # for ent in doc.ents:
+    #     ent_text = ent.text
+    #     ent_start = question.find(ent_text)
+    #     if ent_start != -1:
+    #         matched_spans.add((ent_start, ent_start + len(ent_text)))
+    #         keywords_with_positions.append((ent_text, ent_start))
 
-    for pattern in name_patterns:
-        for match in pattern.finditer(question):
-            start, end = match.span()
-            if not any(s <= start < e or s < end <= e for s, e in matched_spans):
-                matched_spans.add((start, end))
-                keywords_with_positions.append((match.group(), start))
+    # for pattern in name_patterns:
+    #     for match in pattern.finditer(question):
+    #         start, end = match.span()
+    #         if not any(s <= start < e or s < end <= e for s, e in matched_spans):
+    #             matched_spans.add((start, end))
+    #             keywords_with_positions.append((match.group(), start))
 
-    important_pos = {"NOUN", "PROPN", "ADJ", "VERB", "NUM"}
-    for token in doc:
-        if token.pos_ in important_pos and not token.is_stop:
-            token_start = token.idx
-            if not any(s <= token_start < e for s, e in matched_spans):
-                matched_spans.add((token_start, token_start + len(token.text)))
-                keywords_with_positions.append((token.text, token_start))
+    # important_pos = {"NOUN", "PROPN", "ADJ", "VERB", "NUM"}
+    # for token in doc:
+    #     if token.pos_ in important_pos and not token.is_stop:
+    #         token_start = token.idx
+    #         if not any(s <= token_start < e for s, e in matched_spans):
+    #             matched_spans.add((token_start, token_start + len(token.text)))
+    #             keywords_with_positions.append((token.text, token_start))
 
-    keywords_with_positions.sort(key=lambda x: x[1])
+    # keywords_with_positions.sort(key=lambda x: x[1])
     final_keywords = []
-    seen_keywords = set()
-    for kw, pos in keywords_with_positions:
-        if not any(kw in other_kw and kw != other_kw for other_kw in seen_keywords):
-            final_keywords.append(kw)
-            seen_keywords.add(kw)
+    # seen_keywords = set()
+    # for kw, pos in keywords_with_positions:
+    #     if not any(kw in other_kw and kw != other_kw for other_kw in seen_keywords):
+    #         final_keywords.append(kw)
+    #         seen_keywords.add(kw)
     return " ".join(final_keywords)
 
 
@@ -274,20 +273,20 @@ def retrieve_and_rerank_chunks(dataset: str, query: str, chunk_size: int = 200, 
             return []
 
         
-        tokenizer = global_tokenizer
-        model = global_model
+        # tokenizer = global_tokenizer
+        # model = global_model
 
         pairs = [[query, item["content"]] for item in coarse_results]
         all_scores = []
         batch_size = 8
 
-        with torch.no_grad():
-            for i in range(0, len(pairs), batch_size):
-                batch_pairs = pairs[i:i+batch_size]
-                inputs = tokenizer(batch_pairs, padding=True, truncation=True, return_tensors='pt', max_length=512)
-                inputs = {k: v.to(device) for k, v in inputs.items()}  # Move to same device
-                scores = model(**inputs).logits.view(-1).float().cpu().tolist()
-                all_scores.extend(scores)
+        # with torch.no_grad():
+        #     for i in range(0, len(pairs), batch_size):
+        #         batch_pairs = pairs[i:i+batch_size]
+        #         inputs = tokenizer(batch_pairs, padding=True, truncation=True, return_tensors='pt', max_length=512)
+        #         inputs = {k: v.to(device) for k, v in inputs.items()}  # Move to same device
+        #         scores = model(**inputs).logits.view(-1).float().cpu().tolist()
+        #         all_scores.extend(scores)
 
         for i, score in enumerate(all_scores):
             coarse_results[i]["rerank_score"] = score
